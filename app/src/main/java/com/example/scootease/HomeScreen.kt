@@ -41,10 +41,10 @@ val bikeCategories = listOf(
 )
 
 val popularBikes = listOf(
-    Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.ic_launcher_background),
-    Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.ic_launcher_background),
-    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.ic_launcher_background),
-    Bike(4, "Vespa Sprint", "150cc · Auto", "150k", 4.7, R.drawable.ic_launcher_background)
+    Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario),
+    Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax),
+    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy),
+    Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx)
 )
 // Catatan: Ganti R.drawable.ic_launcher_background dengan gambar motor Anda sendiri nanti.
 
@@ -247,50 +247,66 @@ fun BikeCard(bike: Bike) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.width(200.dp)
     ) {
-        Column {
-            // Placeholder for image. Replace with a real image loader like Coil.
-            Box(
-                modifier = Modifier
-                    .height(120.dp)
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(bike.name, color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Column(Modifier.padding(12.dp)) {
-                Text(bike.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text(bike.specs, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "IDR ${bike.price}/day",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
+                Column {
+                    // =================================================================
+                    // BAGIAN PENTING YANG HARUS ANDA PERBAIKI ADA DI SINI
+                    // Ganti Box placeholder dengan komponen Image yang sebenarnya.
+                    // =================================================================
+                    Image(
+                        painter = painterResource(id = bike.imageRes), // Menggunakan ID gambar dari data `Bike`
+                        contentDescription = bike.name, // Deskripsi untuk aksesibilitas
+                        modifier = Modifier
+                            .height(120.dp)
+                            .fillMaxWidth(),
+                        contentScale = ContentScale.Crop // Ini memastikan gambar memenuhi area tanpa gepeng (distorsi)
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Star, contentDescription = "Rating", tint = Color(0xFFFFC700), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
+
+                    // Bagian bawah kartu (teks) kemungkinan sudah benar,
+                    // tapi kita sertakan lagi untuk memastikan.
+                    Column(Modifier.padding(12.dp)) {
                         Text(
-                            text = bike.rating.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold
+                            text = bike.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = bike.specs,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "IDR ${bike.price}/day",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Star,
+                                    contentDescription = "Rating",
+                                    tint = Color(0xFFFFC700),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = bike.rating.toString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-    }
-}
 
 @Composable
 fun PromotionBanner() {
