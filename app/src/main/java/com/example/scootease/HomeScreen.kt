@@ -2,6 +2,7 @@ package com.example.scootease
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -44,16 +45,17 @@ val popularBikes = listOf(
     Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario),
     Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax),
     Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy),
-    Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx)
+    Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx),
+    Bike(5, "Harley Sporster 48", "1200cc · Manual", "2000k", 4.6, R.drawable.harley_48)
 )
 // Catatan: Ganti R.drawable.ic_launcher_background dengan gambar motor Anda sendiri nanti.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onNavigateToProfile: () -> Unit) {
     Scaffold(
-        topBar = { TopHeader() },
-        bottomBar = { BottomNavigationBar() }
+        // 2. Teruskan parameter ke TopHeader
+        topBar = { TopHeader(onProfileClick = onNavigateToProfile) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -77,31 +79,39 @@ fun HomeScreen() {
     }
 }
 
+// 3. TopHeader sekarang menerima parameter onProfileClick
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopHeader() {
+fun TopHeader(onProfileClick: () -> Unit) {
     TopAppBar(
         title = {
             Column {
-                Text("Your Location", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Your Location", style = MaterialTheme.typography.labelSmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.LocationOn, "Location", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Gianyar, Bali", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Gianyar, Bali", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         },
         actions = {
-            IconButton(onClick = { /*TODO*/ }) {
+            IconButton(onClick = {}) {
                 BadgedBox(badge = { Badge { Text("3") } }) {
-                    Icon(Icons.Filled.Notifications, "Notifications", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Filled.Notifications, "Notifications")
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Image(painter = painterResource(id = R.drawable.ic_launcher_foreground), "User Avatar", modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer))
+            // 4. Tambahkan modifier .clickable ke gambar avatar
+            Image(
+                painter = painterResource(id = R.drawable.ic_launcher_foreground), // Ganti dengan avatar
+                contentDescription = "User Avatar",
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onProfileClick)
+            )
             Spacer(modifier = Modifier.width(8.dp))
-        },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        }
     )
 }
 
@@ -352,60 +362,61 @@ fun PromotionBanner() {
 }
 
 
-@Composable
-fun BottomNavigationBar() {
-    // State untuk mengingat item mana yang sedang dipilih
-    var selectedItem by remember { mutableIntStateOf(0) }
-
-    // Daftar nama untuk setiap item navigasi
-    val items = listOf("Home", "Map", "Bookings", "Profile")
-
-    // Daftar ikon versi "Outlined" (saat tidak dipilih)
-    // FIX: Mengganti ListAlt yang usang dengan Article
-    val outlinedIcons = listOf(
-        Icons.Outlined.Home,
-        Icons.Outlined.Map,
-        Icons.Outlined.Article, // Menggantikan ListAlt
-        Icons.Outlined.Person
-    )
-
-    // Daftar ikon versi "Filled" (saat dipilih)
-    // FIX: Mengganti ListAlt yang usang dengan Article
-    val filledIcons = listOf(
-        Icons.Filled.Home,
-        Icons.Filled.Map,
-        Icons.Filled.Article, // Menggantikan ListAlt
-        Icons.Filled.Person
-    )
-
-    NavigationBar {
-        items.forEachIndexed { index, item ->
-            NavigationBarItem(
-                // Label teks di bawah ikon
-                label = { Text(item) },
-
-                // Cek apakah item ini sedang dipilih
-                selected = selectedItem == index,
-
-                // Aksi saat item diklik (update state)
-                onClick = { selectedItem = index },
-
-                // Logika untuk menampilkan ikon yang benar
-                icon = {
-                    // Gunakan ikon 'filled' jika terpilih, jika tidak, gunakan 'outlined'
-                    val icon = if (selectedItem == index) filledIcons[index] else outlinedIcons[index]
-                    Icon(icon, contentDescription = item)
-                }
-            )
-        }
-    }
-}
+//@Composable
+//fun BottomNavigationBar() {
+//    // State untuk mengingat item mana yang sedang dipilih
+//    var selectedItem by remember { mutableIntStateOf(0) }
+//
+//    // Daftar nama untuk setiap item navigasi
+//    val items = listOf("Home", "Map", "Bookings", "Profile")
+//
+//    // Daftar ikon versi "Outlined" (saat tidak dipilih)
+//    // FIX: Mengganti ListAlt yang usang dengan Article
+//    val outlinedIcons = listOf(
+//        Icons.Outlined.Home,
+//        Icons.Outlined.Map,
+//        Icons.Outlined.Article, // Menggantikan ListAlt
+//        Icons.Outlined.Person
+//    )
+//
+//    // Daftar ikon versi "Filled" (saat dipilih)
+//    // FIX: Mengganti ListAlt yang usang dengan Article
+//    val filledIcons = listOf(
+//        Icons.Filled.Home,
+//        Icons.Filled.Map,
+//        Icons.Filled.Article, // Menggantikan ListAlt
+//        Icons.Filled.Person
+//    )
+//
+//    NavigationBar {
+//        items.forEachIndexed { index, item ->
+//            NavigationBarItem(
+//                // Label teks di bawah ikon
+//                label = { Text(item) },
+//
+//                // Cek apakah item ini sedang dipilih
+//                selected = selectedItem == index,
+//
+//                // Aksi saat item diklik (update state)
+//                onClick = { selectedItem = index },
+//
+//                // Logika untuk menampilkan ikon yang benar
+//                icon = {
+//                    // Gunakan ikon 'filled' jika terpilih, jika tidak, gunakan 'outlined'
+//                    val icon = if (selectedItem == index) filledIcons[index] else outlinedIcons[index]
+//                    Icon(icon, contentDescription = item)
+//                }
+//            )
+//        }
+//    }
+//}
 
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 1200)
 @Composable
 fun HomeScreenPreview() {
     ScootEaseTheme {
-        HomeScreen()
+        // Beri nilai default untuk onNavigateToProfile di preview
+        HomeScreen(onNavigateToProfile = {})
     }
 }

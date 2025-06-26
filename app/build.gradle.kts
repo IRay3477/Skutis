@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.scootease"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.scootease"
@@ -102,4 +102,5 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.3.2")
     implementation("androidx.constraintlayout:constraintlayout-compose:1.1.1")
     implementation("androidx.compose.foundation:foundation:1.8.2")
+    implementation("androidx.compose.material:material-icons-extended:1.6.8")
 }

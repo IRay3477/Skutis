@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // MainActivity hanya memanggil Composable utama
-                    HomeScreen()
+                    ScootEaseApp()
                 }
             }
         }
