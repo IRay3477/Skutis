@@ -50,11 +50,9 @@ fun MainScreen(onLogout: () -> Unit) {
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedItem) {
-                // 2. Berikan aksi navigasi ke profil dari HomeScreen
                 0 -> HomeScreen(onNavigateToProfile = { selectedItem = 3 })
                 1 -> MapScreen(onNavigateBack = { selectedItem = 0 })
                 2 -> CenterText(text = "Halaman Booking")
-                // 3. Tampilkan ProfileScreen dan berikan aksi logout
                 3 -> ProfileScreen(onLogoutClick = onLogout)
             }
         }
