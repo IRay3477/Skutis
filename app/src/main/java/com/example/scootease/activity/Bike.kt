@@ -1,4 +1,4 @@
-package com.example.scootease
+package com.example.scootease.activity
 import androidx.annotation.DrawableRes
 
 data class Bike(

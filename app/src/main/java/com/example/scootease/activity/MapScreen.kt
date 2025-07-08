@@ -1,4 +1,4 @@
-package com.example.scootease
+package com.example.scootease.activity
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.scootease.ui.theme.ScootEaseTheme
+import com.example.scootease.R
 
 // Data contoh untuk motor yang "dipilih" di peta.
 val selectedBikeForMap = Bike(

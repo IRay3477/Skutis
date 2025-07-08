@@ -1,4 +1,4 @@
-package com.example.scootease
+package com.example.scootease.activity
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.example.scootease.ui.theme.ScootEaseTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.scootease.R
 
 // --- Dummy Data (Data Contoh) ---
 // Di aplikasi nyata, data ini akan berasal dari ViewModel atau API
