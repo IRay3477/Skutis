@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,29 +39,31 @@ val sampleBookings = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BookingsScreen() {
+fun BookingsScreen(
+    bookings: List<Booking>,
+    onDeleteBooking: (Booking) -> Unit
+) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("In The Process", "History")
+    val tabs = listOf("Dalam Proses", "Riwayat")
+    var bookingToDelete by remember { mutableStateOf<Booking?>(null) }
 
-    // Filter daftar pesanan berdasarkan tab yang dipilih
-    val filteredBookings = remember(selectedTabIndex) {
-        if (selectedTabIndex == 0) { // Tab "Dalam Proses"
-            sampleBookings.filter { it.status == BookingStatus.ONGOING }
-        } else { // Tab "Riwayat"
-            sampleBookings.filter { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }
+    val filteredBookings = remember(selectedTabIndex, bookings) {
+        if (selectedTabIndex == 0) {
+            bookings.filter { it.status == BookingStatus.ONGOING }
+        } else {
+            bookings.filter { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bookings", fontWeight = FontWeight.Bold) },
+                title = { Text("Pesanan Saya", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Tab Row untuk memilih kategori
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -69,7 +74,6 @@ fun BookingsScreen() {
                 }
             }
 
-            // Daftar pesanan
             if (filteredBookings.isEmpty()) {
                 EmptyState(tabName = tabs[selectedTabIndex])
             } else {
@@ -78,16 +82,40 @@ fun BookingsScreen() {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(filteredBookings) { booking ->
-                        BookingItemCard(booking = booking)
+                        BookingItemCard(
+                            booking = booking,
+                            showDeleteIcon = selectedTabIndex == 1,
+                            onDeleteClick = {
+                                bookingToDelete = booking
+                            }
+                        )
                     }
                 }
             }
         }
     }
+
+    if (bookingToDelete != null) {
+        DeleteConfirmationDialog(
+            booking = bookingToDelete!!,
+            onConfirm = {
+                onDeleteBooking(bookingToDelete!!)
+                bookingToDelete = null
+            },
+            onDismiss = {
+                bookingToDelete = null
+            }
+        )
+    }
 }
 
+// --- PERBAIKAN: Pastikan definisi fungsi ini memiliki semua parameter yang dibutuhkan ---
 @Composable
-fun BookingItemCard(booking: Booking) {
+fun BookingItemCard(
+    booking: Booking,
+    showDeleteIcon: Boolean,
+    onDeleteClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -100,33 +128,60 @@ fun BookingItemCard(booking: Booking) {
             Image(
                 painter = painterResource(id = booking.bike.imageRes),
                 contentDescription = booking.bike.name,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(booking.bike.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "${booking.startDate} - ${booking.endDate}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("${booking.startDate} - ${booking.endDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(booking.totalPrice, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
-            StatusBadge(status = booking.status)
+            if (showDeleteIcon) {
+                IconButton(onClick = onDeleteClick) {
+                    Icon(Icons.Default.Delete, contentDescription = "Hapus Riwayat", tint = MaterialTheme.colorScheme.error)
+                }
+            } else {
+                StatusBadge(status = booking.status)
+            }
         }
     }
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    booking: Booking,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Warning, contentDescription = "Peringatan") },
+        title = { Text("Konfirmasi Hapus") },
+        text = { Text("Anda yakin ingin menghapus riwayat pesanan ${booking.bike.name}?") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Yes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("No")
+            }
+        }
+    )
 }
 
 @Composable
 fun StatusBadge(status: BookingStatus) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(50)) // Membuat sudut sangat membulat seperti pil
+            .clip(RoundedCornerShape(50))
             .background(status.color.copy(alpha = 0.1f))
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
@@ -148,18 +203,20 @@ fun EmptyState(tabName: String) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "There is no order '$tabName'",
+            text = "Tidak ada pesanan di kategori '$tabName'",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 fun BookingsScreenPreview() {
     ScootEaseTheme {
-        BookingsScreen()
+        BookingsScreen(
+            bookings = sampleBookings,
+            onDeleteBooking = {}
+        )
     }
 }

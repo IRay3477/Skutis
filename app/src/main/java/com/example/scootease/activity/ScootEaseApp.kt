@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -34,6 +35,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import androidx.compose.runtime.remember
 import com.example.scootease.R
+import com.example.scootease.helpers.DBHelper
 import com.example.scootease.models.BikeStatus
 import com.example.scootease.models.BikeType
 import java.util.Locale
@@ -61,17 +63,17 @@ val allBikes = listOf(
 @Composable
 fun ScootEaseApp() {
     val context = LocalContext.current
+    val dbHelper = remember { DBHelper(context) }
     val sessionManager = remember { SessionManager(context) }
 
-    // State untuk mengontrol layar mana yang sedang aktif
+    // --- State Management Terpusat ---
     var currentScreen by remember { mutableStateOf(if (sessionManager.isLoggedIn()) AppScreen.MAIN else AppScreen.AUTH) }
-
-    // State untuk data yang bisa berubah
     var bookingRequest by remember { mutableStateOf<BookingRequest?>(null) }
-    var bookings by remember { mutableStateOf(sampleBookings) }
+    var bookings by remember { mutableStateOf(dbHelper.getAllBookings()) }
+    var mainScreenActiveTab by rememberSaveable { mutableIntStateOf(0) }
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        // --- PERBAIKAN: Gunakan SATU blok `when` untuk semua navigasi ---
+        // --- Logika Navigasi Tunggal ---
         when (currentScreen) {
             AppScreen.AUTH -> {
                 AuthScreen(onAuthSuccess = { user ->
@@ -80,36 +82,44 @@ fun ScootEaseApp() {
                 })
             }
             AppScreen.MAIN -> {
-                // Saat di layar utama, kita cek apakah ada permintaan booking
                 if (bookingRequest != null) {
                     BookingDetailScreen(
                         bike = bookingRequest!!.bike,
                         startDateMillis = bookingRequest!!.startDate,
                         endDateMillis = bookingRequest!!.endDate,
-                        onNavigateBack = { bookingRequest = null }, // Kembali ke MainScreen
+                        onNavigateBack = { bookingRequest = null },
                         onConfirmBooking = {
                             val newBooking = Booking(
                                 id = "SC-00${bookings.size + 1}",
                                 bike = bookingRequest!!.bike,
                                 startDate = SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(bookingRequest!!.startDate)),
                                 endDate = SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(bookingRequest!!.endDate)),
-                                totalPrice = "IDR ...",
+                                totalPrice = "IDR ...", // Kalkulasi bisa disempurnakan
                                 status = BookingStatus.ONGOING
                             )
-                            bookings = bookings + newBooking
+                            dbHelper.insertBooking(newBooking)
+                            bookings = dbHelper.getAllBookings() // Muat ulang dari DB
                             bookingRequest = null
-                            // Tidak perlu mengubah tab secara manual lagi, biarkan MainScreen yang mengaturnya
+                            mainScreenActiveTab = 2 // Pindah ke tab booking setelah konfirmasi
                             Toast.makeText(context, "Motorbike successfully booked!", Toast.LENGTH_SHORT).show()
                         }
                     )
                 } else {
-                    // Jika tidak ada permintaan booking, tampilkan MainScreen
                     val username = sessionManager.getUserName() ?: "Pengguna"
                     val email = sessionManager.getUserEmail() ?: "Tidak ada email"
                     MainScreen(
                         username = username,
                         email = email,
                         allBikes = allBikes,
+                        bookings = bookings,
+                        onDeleteBooking = { bookingToDelete ->
+                            if (dbHelper.deleteBooking(bookingToDelete.id)) {
+                                bookings = dbHelper.getAllBookings() // Muat ulang dari DB
+                                Toast.makeText(context, "Riwayat dihapus", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Gagal menghapus riwayat", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         onLogout = {
                             sessionManager.clearSession()
                             currentScreen = AppScreen.AUTH
@@ -117,62 +127,15 @@ fun ScootEaseApp() {
                         onBikeSelectedForBooking = { bike, startDate, endDate ->
                             bookingRequest = BookingRequest(bike, startDate, endDate)
                         },
-                        onNavigateTo = { screen -> currentScreen = screen }
+                        onNavigateTo = { screen -> currentScreen = screen },
+                        activeTab = mainScreenActiveTab,
+                        onTabSelected = { newTabIndex -> mainScreenActiveTab = newTabIndex }
                     )
                 }
             }
             AppScreen.DOC_VERIFICATION -> DocumentVerificationScreen(onNavigateBack = { currentScreen = AppScreen.MAIN })
             AppScreen.HELP -> HelpScreen(onNavigateBack = { currentScreen = AppScreen.MAIN })
             AppScreen.ABOUT_US -> AboutUsScreen(onNavigateBack = { currentScreen = AppScreen.MAIN })
-        }
-    }
-}
-
-@Composable
-fun MainScreen(
-    username: String, email: String, allBikes: List<Bike>, onLogout: () -> Unit,
-    onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
-    onNavigateTo: (AppScreen) -> Unit
-) {
-    var activeTab by remember { mutableIntStateOf(0) }
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                val items = listOf("Home", "Map", "Bookings", "Profile")
-                val icons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
-                val filledIcons = listOf(Icons.Filled.Home, Icons.Filled.Map, Icons.Filled.Article, Icons.Filled.Person)
-
-                items.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        label = { Text(item) },
-                        selected = activeTab == index,
-                        onClick = { activeTab = index },
-                        icon = {
-                            val icon = if (activeTab == index) filledIcons[index] else icons[index]
-                            Icon(icon, contentDescription = item)
-                        }
-                    )
-                }
-            }
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            when (activeTab) {
-                0 -> HomeScreen(
-                    allBikes = allBikes,
-                    onNavigateToProfile = { onNavigateTo(AppScreen.MAIN); activeTab = 3 },
-                    onBikeSelected = onBikeSelectedForBooking
-                )
-                1 -> MapScreen(onNavigateBack = { activeTab = 0 })
-                2 -> BookingsScreen()
-                3 -> ProfileScreen(
-                    username = username, email = email, onLogoutClick = onLogout,
-                    onNavigateToDocVerification = { onNavigateTo(AppScreen.DOC_VERIFICATION) },
-                    onNavigateToHelp = { onNavigateTo(AppScreen.HELP) },
-                    onNavigateToAbout = { onNavigateTo(AppScreen.ABOUT_US) }
-                )
-            }
         }
     }
 }

@@ -30,9 +30,11 @@ fun MainScreen(
     username: String,
     email: String,
     allBikes: List<Bike>,
+    bookings: List<Booking>,
+    onDeleteBooking: (Booking) -> Unit,
     onLogout: () -> Unit,
-    onNavigateTo: (AppScreen) -> Unit,
     onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
+    onNavigateTo: (AppScreen) -> Unit,
     activeTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
@@ -88,7 +90,10 @@ fun MainScreen(
                         }
                     )
                     1 -> MapScreen(onNavigateBack = { activeTab = 0 })
-                    2 -> BookingsScreen()
+                    2 -> BookingsScreen(
+                        bookings = bookings,
+                        onDeleteBooking = onDeleteBooking
+                    )
                     3 -> ProfileScreen(
                         username = username, email = email, onLogoutClick = onLogout,
                         onNavigateToDocVerification = { onNavigateTo(AppScreen.DOC_VERIFICATION) },

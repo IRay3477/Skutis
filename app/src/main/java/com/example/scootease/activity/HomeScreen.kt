@@ -105,11 +105,6 @@ fun TopHeader(onProfileClick: () -> Unit) {
             }
         },
         actions = {
-            IconButton(onClick = {}) {
-                BadgedBox(badge = { Badge { Text("3") } }) {
-                    Icon(Icons.Filled.Notifications, "Notifications")
-                }
-            }
             Spacer(modifier = Modifier.width(8.dp))
             // 4. Tambahkan modifier .clickable ke gambar avatar
             Image(
