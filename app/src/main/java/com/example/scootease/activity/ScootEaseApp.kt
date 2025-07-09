@@ -25,10 +25,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-enum class AppScreen {
-    AUTH, MAIN, DOC_VERIFICATION, HELP, ABOUT_US
-}
-
+enum class AppScreen { AUTH, MAIN, DOC_VERIFICATION, HELP, ABOUT_US }
 data class BookingRequest(val bike: Bike, val startDate: Long, val endDate: Long)
 
 @Composable
@@ -42,11 +39,16 @@ fun ScootEaseApp() {
     var selectedBookingDetail by remember { mutableStateOf<Booking?>(null) }
     var mainScreenActiveTab by rememberSaveable { mutableIntStateOf(0) }
 
+    // --- KEMBALIKAN KE VERSI DATABASE ---
     var allBikes by remember { mutableStateOf<List<Bike>>(emptyList()) }
     var bookings by remember { mutableStateOf<List<Booking>>(emptyList()) }
 
+    var searchStartDate by rememberSaveable { mutableStateOf(System.currentTimeMillis()) }
+    var searchEndDate by rememberSaveable { mutableStateOf(System.currentTimeMillis() + 86400000) }
+
     val coroutineScope = rememberCoroutineScope()
 
+    // Muat data dari database di background
     LaunchedEffect(key1 = currentScreen) {
         if (currentScreen == AppScreen.MAIN) {
             allBikes = dbHelper.getAllBikes()
@@ -104,6 +106,10 @@ fun ScootEaseApp() {
                         email = sessionManager.getUserEmail() ?: "Tidak ada email",
                         allBikes = allBikes,
                         bikeCount = allBikes.size,
+                        searchStartDate = searchStartDate,
+                        searchEndDate = searchEndDate,
+                        onStartDateChanged = { searchStartDate = it },
+                        onEndDateChanged = { searchEndDate = it },
                         ongoingBookings = ongoingBookings,
                         historyBookings = historyBookings,
                         onBookingSelected = { selectedBookingDetail = it },

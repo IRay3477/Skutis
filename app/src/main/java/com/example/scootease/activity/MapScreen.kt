@@ -30,31 +30,29 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 
-// --- PERUBAHAN: Tambahkan parameter allBikes ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     allBikes: List<Bike>,
+    searchStartDate: Long,
+    searchEndDate: Long,
+    onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    // --- State untuk melacak motor yang dipilih di peta ---
     var selectedBike by remember { mutableStateOf<Bike?>(null) }
 
-    // --- Data Lokasi Contoh untuk Motor ---
-    // Di aplikasi nyata, ini akan datang dari database Anda.
     val bikeLocations = remember {
         mapOf(
-            1 to LatLng(-8.4594, 115.2683), // Vario di Ubud
-            2 to LatLng(-8.6573, 115.2224), // NMAX di Denpasar
-            3 to LatLng(-8.8149, 115.1697), // Scoopy di Kuta
-            4 to LatLng(-8.7222, 115.1768), // PCX di Seminyak
-            5 to LatLng(-8.4095, 115.2933), // Harley 48 di Tegalalang
-            6 to LatLng(-8.3405, 115.0919), // BMW GS di Bedugul
-            7 to LatLng(-8.7909, 115.2011)  // Harley RG di Nusa Dua
+            1 to LatLng(-8.4594, 115.2683), // Ubud
+            2 to LatLng(-8.6573, 115.2224), // Denpasar
+            3 to LatLng(-8.8149, 115.1697), // Kuta
+            4 to LatLng(-8.7222, 115.1768), // Seminyak
+            5 to LatLng(-8.4095, 115.2933), // Tegalalang
+            6 to LatLng(-8.3405, 115.0919), // Bedugul
+            7 to LatLng(-8.7909, 115.2011)  // Nusa Dua
         )
     }
 
-    // --- Pengaturan awal kamera peta, fokus di Bali ---
     val baliCenter = LatLng(-8.65, 115.2166)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(baliCenter, 10f)
@@ -68,41 +66,41 @@ fun MapScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // --- PERBAIKAN: Gunakan GoogleMap ---
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
-                onMapClick = {
-                    // Sembunyikan bottom sheet jika klik area kosong di peta
-                    selectedBike = null
-                }
+                onMapClick = { selectedBike = null }
             ) {
-                // --- Tampilkan semua motor sebagai Marker ---
                 allBikes.forEach { bike ->
                     bikeLocations[bike.id]?.let { location ->
-                        Marker(
-                            state = MarkerState(position = location),
-                            title = bike.name,
-                            snippet = "Klik untuk detail",
-                            // Ganti ikon berdasarkan status
-                            icon = BitmapDescriptorFactory.defaultMarker(
-                                if (bike.status == BikeStatus.AVAILABLE) BitmapDescriptorFactory.HUE_GREEN else BitmapDescriptorFactory.HUE_RED
-                            ),
-                            onClick = {
-                                selectedBike = bike
-                                // Mengembalikan false agar event klik default (seperti judul muncul) tetap berjalan
-                                false
-                            }
-                        )
+                        key(bike.id) {
+                            Marker(
+                                state = MarkerState(position = location),
+                                title = bike.name,
+                                snippet = "Status: ${bike.status.displayName}",
+                                icon = BitmapDescriptorFactory.defaultMarker(
+                                    if (bike.status == BikeStatus.AVAILABLE) BitmapDescriptorFactory.HUE_GREEN else BitmapDescriptorFactory.HUE_RED
+                                ),
+                                onClick = {
+                                    selectedBike = bike
+                                    false
+                                }
+                            )
+                        }
                     }
                 }
             }
-            // --- Tampilkan Bottom Sheet jika ada motor yang dipilih ---
+
             if (selectedBike != null) {
                 Column(
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
-                    BikeInfoBottomSheet(bike = selectedBike!!)
+                    BikeInfoBottomSheet(
+                        bike = selectedBike!!,
+                        onRentClick = {
+                            onBikeSelectedForBooking(selectedBike!!, searchStartDate, searchEndDate)
+                        }
+                    )
                 }
             }
         }
@@ -120,7 +118,7 @@ fun MapTopBar(onNavigateBack: () -> Unit) {
             }
         },
         actions = {
-            IconButton(onClick = { /* TODO: Tampilkan dialog filter */ }) {
+            IconButton(onClick = { /* TODO: Filter */ }) {
                 Icon(Icons.Default.FilterList, contentDescription = "Filter Peta")
             }
         },
@@ -130,8 +128,12 @@ fun MapTopBar(onNavigateBack: () -> Unit) {
     )
 }
 
+// --- PERBAIKAN DI FUNGSI INI ---
 @Composable
-fun BikeInfoBottomSheet(bike: Bike) {
+fun BikeInfoBottomSheet(
+    bike: Bike,
+    onRentClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -151,17 +153,35 @@ fun BikeInfoBottomSheet(bike: Bike) {
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(bike.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(bike.specs, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    bike.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    bike.specs,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Star, "Rating", tint = Color(0xFFFFC700), modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Filled.Star,
+                        "Rating",
+                        tint = Color(0xFFFFC700),
+                        modifier = Modifier.size(16.dp)
+                    )
                     Spacer(Modifier.width(4.dp))
-                    Text(" ${bike.rating}  ·  IDR ${bike.price}/hari", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        " ${bike.rating}  ·  IDR ${bike.price}/hari",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
             Button(
-                onClick = { /* TODO: Navigasi ke halaman detail motor */ },
+                onClick = onRentClick, // Panggil callback yang benar
+                enabled = bike.status == BikeStatus.AVAILABLE, // Tombol aktif jika motor tersedia
                 modifier = Modifier.height(40.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
@@ -175,6 +195,13 @@ fun BikeInfoBottomSheet(bike: Bike) {
 @Composable
 fun MapScreenPreview() {
     ScootEaseTheme {
-        MapScreen(allBikes = emptyList(), onNavigateBack = {})
+        // Preview membutuhkan semua parameter, kita berikan nilai default
+        MapScreen(
+            allBikes = emptyList(),
+            searchStartDate = 0L,
+            searchEndDate = 0L,
+            onBikeSelectedForBooking = { _, _, _ -> },
+            onNavigateBack = {}
+        )
     }
 }

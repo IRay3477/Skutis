@@ -31,6 +31,10 @@ fun MainScreen(
     email: String,
     allBikes: List<Bike>,
     bikeCount: Int,
+    searchStartDate: Long,
+    searchEndDate: Long,
+    onStartDateChanged: (Long) -> Unit,
+    onEndDateChanged: (Long) -> Unit,
     ongoingBookings: List<Booking>,
     historyBookings: List<Booking>,
     onBookingSelected: (Booking) -> Unit,
@@ -71,9 +75,18 @@ fun MainScreen(
                     onNavigateToProfile = { onTabSelected(3) },
                     onBikeSelected = { bike, startDate, endDate ->
                         onBikeSelectedForBooking(bike, startDate, endDate)
-                    }
+                    },
+                    searchStartDate = searchStartDate,
+                    searchEndDate = searchEndDate,
+                    onStartDateChanged = onStartDateChanged,
+                    onEndDateChanged = onEndDateChanged
                 )
-                1 -> MapScreen(allBikes = allBikes, onNavigateBack = { onTabSelected(0) })
+                1 -> MapScreen(allBikes = allBikes,
+                    searchStartDate = searchStartDate,
+                    searchEndDate = searchEndDate,
+                    onBikeSelectedForBooking = onBikeSelectedForBooking,
+                    onNavigateBack = { onTabSelected(0) })
+
                 2 -> BookingsScreen(
                     ongoingBookings = ongoingBookings,
                     historyBookings = historyBookings,

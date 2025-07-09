@@ -41,13 +41,17 @@ import com.example.scootease.models.BikeType
 fun HomeScreen(
     allBikes: List<Bike>,
     bikeCount: Int,
+    searchStartDate: Long,
+    searchEndDate: Long,
+    onStartDateChanged: (Long) -> Unit,
+    onEndDateChanged: (Long) -> Unit,
     onNavigateToProfile: () -> Unit,
     onBikeSelected: (bike: Bike, startDate: Long, endDate: Long) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("All") }
     var isSearched by remember { mutableStateOf(false) }
-    var searchStartDate by rememberSaveable { mutableStateOf(System.currentTimeMillis()) }
-    var searchEndDate by rememberSaveable { mutableStateOf(System.currentTimeMillis() + 86400000) }
+//    var searchStartDate by rememberSaveable { mutableStateOf(System.currentTimeMillis()) }
+//    var searchEndDate by rememberSaveable { mutableStateOf(System.currentTimeMillis() + 86400000) }
 
     val listTitle = if (isSearched) "Available Bikes" else "Our Bikes"
     val displayedBikes = remember(selectedCategory, isSearched, allBikes) {
@@ -71,13 +75,8 @@ fun HomeScreen(
                 SearchCard(
                     startDateMillis = searchStartDate,
                     endDateMillis = searchEndDate,
-                    onStartDateChanged = { newDate ->
-                        searchStartDate = newDate
-                        if (newDate >= searchEndDate) {
-                            searchEndDate = newDate + 86400000
-                        }
-                    },
-                    onEndDateChanged = { searchEndDate = it },
+                    onStartDateChanged = onStartDateChanged,
+                    onEndDateChanged = onEndDateChanged,
                     onSearchClicked = { isSearched = true }
                 )
                 CategoriesSection(
@@ -348,6 +347,12 @@ fun HomeScreenPreview() {
         HomeScreen(
             allBikes = sampleBikesForPreview,
             bikeCount = sampleBikesForPreview.size,
+            // --- TAMBAHKAN PARAMETER YANG HILANG DI SINI ---
+            searchStartDate = System.currentTimeMillis(),
+            searchEndDate = System.currentTimeMillis() + 86400000,
+            onStartDateChanged = {},
+            onEndDateChanged = {},
+            // -------------------------------------------
             onNavigateToProfile = {},
             onBikeSelected = { _, _, _ -> }
         )
