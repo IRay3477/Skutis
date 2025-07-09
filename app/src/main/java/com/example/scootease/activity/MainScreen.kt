@@ -30,77 +30,61 @@ fun MainScreen(
     username: String,
     email: String,
     allBikes: List<Bike>,
-    bookings: List<Booking>,
+    // --- PERUBAHAN: Terima dua daftar terpisah ---
+    ongoingBookings: List<Booking>,
+    historyBookings: List<Booking>,
     onDeleteBooking: (Booking) -> Unit,
     onLogout: () -> Unit,
     onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
     onNavigateTo: (AppScreen) -> Unit,
     activeTab: Int,
-    onTabSelected: (Int) -> Unit
+    onTabSelected: (Int) -> Unit,
+    onCompleteBooking: (Booking) -> Unit
 ) {
-    var activeTab by remember { mutableIntStateOf(0) }
-    var bookingRequest by remember { mutableStateOf<BookingRequest?>(null) }
-    var bookings by remember { mutableStateOf(sampleBookings) }
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                val items = listOf("Home", "Map", "Bookings", "Profile")
+                val icons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
+                val filledIcons = listOf(Icons.Filled.Home, Icons.Filled.Map, Icons.Filled.Article, Icons.Filled.Person)
 
-    if (bookingRequest != null) {
-        BookingDetailScreen(
-            bike = bookingRequest!!.bike,
-            startDateMillis = bookingRequest!!.startDate,
-            endDateMillis = bookingRequest!!.endDate,
-            onNavigateBack = { bookingRequest = null },
-            onConfirmBooking = {
-                val newBooking = Booking("SC-00${bookings.size + 1}", bookingRequest!!.bike, SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(
-                    Date(bookingRequest!!.startDate)
-                ), SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(bookingRequest!!.endDate)), "IDR ...", BookingStatus.ONGOING)
-                bookings = bookings + newBooking
-                bookingRequest = null
-                activeTab = 2
-                // Toast.makeText(context, "Motorbike successfully booked!", Toast.LENGTH_SHORT).show()
-            }
-        )
-    } else {
-        Scaffold(
-            bottomBar = {
-                NavigationBar {
-                    val items = listOf("Home", "Map", "Bookings", "Profile")
-                    val icons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
-                    val filledIcons = listOf(Icons.Filled.Home, Icons.Filled.Map, Icons.Filled.Article, Icons.Filled.Person)
-
-                    items.forEachIndexed { index, item ->
-                        NavigationBarItem(
-                            label = { Text(item) },
-                            selected = activeTab == index,
-                            onClick = { activeTab = index },
-                            icon = {
-                                val icon = if (activeTab == index) filledIcons[index] else icons[index]
-                                Icon(icon, contentDescription = item)
-                            }
-                        )
-                    }
-                }
-            }
-        ) { paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues)) {
-                when (activeTab) {
-                    0 -> HomeScreen(
-                        allBikes = allBikes,
-                        onNavigateToProfile = { onNavigateTo(AppScreen.MAIN); activeTab = 3 },
-                        onBikeSelected = { bike, startDate, endDate ->
-                            bookingRequest = BookingRequest(bike, startDate, endDate)
+                items.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        label = { Text(item) },
+                        selected = activeTab == index,
+                        onClick = { onTabSelected(index) },
+                        icon = {
+                            val icon = if (activeTab == index) filledIcons[index] else icons[index]
+                            Icon(icon, contentDescription = item)
                         }
                     )
-                    1 -> MapScreen(onNavigateBack = { activeTab = 0 })
-                    2 -> BookingsScreen(
-                        bookings = bookings,
-                        onDeleteBooking = onDeleteBooking
-                    )
-                    3 -> ProfileScreen(
-                        username = username, email = email, onLogoutClick = onLogout,
-                        onNavigateToDocVerification = { onNavigateTo(AppScreen.DOC_VERIFICATION) },
-                        onNavigateToHelp = { onNavigateTo(AppScreen.HELP) },
-                        onNavigateToAbout = { onNavigateTo(AppScreen.ABOUT_US) }
-                    )
                 }
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (activeTab) {
+                0 -> HomeScreen(
+                    allBikes = allBikes,
+                    onNavigateToProfile = { onTabSelected(3) },
+                    onBikeSelected = { bike, startDate, endDate ->
+                        onBikeSelectedForBooking(bike, startDate, endDate)
+                    }
+                )
+                1 -> MapScreen(onNavigateBack = { onTabSelected(0) })
+                2 -> BookingsScreen(
+                    // --- PERUBAHAN: Berikan dua daftar terpisah ---
+                    ongoingBookings = ongoingBookings,
+                    historyBookings = historyBookings,
+                    onDeleteBooking = onDeleteBooking,
+                    onCompleteBooking = onCompleteBooking
+                )
+                3 -> ProfileScreen(
+                    username = username, email = email, onLogoutClick = onLogout,
+                    onNavigateToDocVerification = { onNavigateTo(AppScreen.DOC_VERIFICATION) },
+                    onNavigateToHelp = { onNavigateTo(AppScreen.HELP) },
+                    onNavigateToAbout = { onNavigateTo(AppScreen.ABOUT_US) }
+                )
             }
         }
     }

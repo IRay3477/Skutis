@@ -13,7 +13,7 @@ import com.example.scootease.models.Booking
 import com.example.scootease.models.BookingStatus
 import com.example.scootease.models.User
 
-class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", null, 1) {
+class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", null, 2) {
 
     companion object {
         private const val TABLE_USERS = "users"
@@ -60,7 +60,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         """.trimIndent()
         )
 
-        // Tabel Motor (tambahan untuk fitur rental)
+        // Tabel Motor
         db.execSQL(
             """
             CREATE TABLE $TABLE_BIKES (
@@ -76,7 +76,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         """.trimIndent()
         )
 
-        // Tabel Booking (tambahan untuk fitur rental)
+        // Tabel Booking
         db.execSQL(
             """
             CREATE TABLE $TABLE_BOOKINGS (
@@ -91,7 +91,8 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         """.trimIndent()
         )
 
-        // Masukkan data motor awal
+        // --- PERUBAHAN ---
+        // Masukkan data motor awal ke dalam database saat dibuat
         insertInitialBikes(db)
     }
 
@@ -103,7 +104,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         onCreate(db)
     }
 
-    // --- FUNGSI UNTUK PENGGUNA (dari kode Anda) ---
+    // --- FUNGSI UNTUK PENGGUNA ---
     fun registerUser(user: User): Boolean {
         val db = writableDatabase
         val cv = ContentValues().apply {
@@ -150,19 +151,140 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         return exists
     }
 
-    // --- FUNGSI UNTUK ALAMAT (dari kode Anda) ---
+    // --- FUNGSI UNTUK ALAMAT ---
     fun insertAlamat(alamat: Alamat): Boolean { /* ... */ return true }
     private fun getAlamatByUser(userId: Int): List<Alamat> { /* ... */ return emptyList() }
 
 
-    // --- FUNGSI UNTUK MOTOR & BOOKING (tambahan) ---
+    // --- PERUBAHAN ---
+    // --- FUNGSI UNTUK MOTOR & BOOKING ---
     private fun insertInitialBikes(db: SQLiteDatabase) {
-        // ... (Logika untuk memasukkan data motor awal, sama seperti sebelumnya)
+        val bikes = listOf(
+            Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario, BikeStatus.UNAVAILABLE, BikeType.MATIC),
+            Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC),
+            Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy, BikeStatus.AVAILABLE, BikeType.MATIC),
+            Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx, BikeStatus.UNAVAILABLE, BikeType.MATIC),
+            Bike(5, "Harley Sportster 48", "1200cc · Manual", "2000k", 4.6, R.drawable.harley_48, BikeStatus.AVAILABLE, BikeType.MANUAL),
+            Bike(6, "BMW R 1200 GS", "1200cc · Manual", "5000k", 4.5, R.drawable.bmw_r1200gs, BikeStatus.AVAILABLE, BikeType.MANUAL),
+            Bike(7, "Harley Road Glide", "1800cc · Manual", "5500k", 4.5, R.drawable.harley_rg, BikeStatus.AVAILABLE, BikeType.MANUAL)
+        )
+        bikes.forEach { bike ->
+            val cv = ContentValues().apply {
+                put("id", bike.id)
+                put("name", bike.name)
+                put("specs", bike.specs)
+                put("price", bike.price)
+                put("rating", bike.rating)
+                put("imageRes", bike.imageRes)
+                put("status", bike.status.name)
+                put("type", bike.type.name)
+            }
+            db.insert(TABLE_BIKES, null, cv)
+        }
     }
 
-    fun getAllBikes(): List<Bike> { /* ... */ return emptyList() }
-    private fun getBikeById(bikeId: Int): Bike? { /* ... */ return null }
-    fun insertBooking(booking: Booking): Boolean { /* ... */ return true }
-    fun deleteBooking(bookingId: String): Boolean { /* ... */ return true }
-    fun getAllBookings(): List<Booking> { /* ... */ return emptyList() }
+    fun getAllBikes(): List<Bike> {
+        val bikeList = mutableListOf<Bike>()
+        val db = readableDatabase
+        val cursor = db.rawQuery("SELECT * FROM $TABLE_BIKES", null)
+        if (cursor.moveToFirst()) {
+            do {
+                bikeList.add(
+                    Bike(
+                        id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                        name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
+                        specs = cursor.getString(cursor.getColumnIndexOrThrow("specs")),
+                        price = cursor.getString(cursor.getColumnIndexOrThrow("price")),
+                        rating = cursor.getDouble(cursor.getColumnIndexOrThrow("rating")),
+                        imageRes = cursor.getInt(cursor.getColumnIndexOrThrow("imageRes")),
+                        status = BikeStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status"))),
+                        type = BikeType.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("type")))
+                    )
+                )
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return bikeList
+    }
+
+    private fun getBikeById(bikeId: Int): Bike? {
+        val db = readableDatabase
+        val cursor = db.rawQuery("SELECT * FROM $TABLE_BIKES WHERE id = ?", arrayOf(bikeId.toString()))
+        var bike: Bike? = null
+        if (cursor.moveToFirst()) {
+            bike = Bike(
+                id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
+                specs = cursor.getString(cursor.getColumnIndexOrThrow("specs")),
+                price = cursor.getString(cursor.getColumnIndexOrThrow("price")),
+                rating = cursor.getDouble(cursor.getColumnIndexOrThrow("rating")),
+                imageRes = cursor.getInt(cursor.getColumnIndexOrThrow("imageRes")),
+                status = BikeStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status"))),
+                type = BikeType.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("type")))
+            )
+        }
+        cursor.close()
+        // Jangan tutup DB di sini agar bisa dipakai di getAllBookings
+        return bike
+    }
+
+    fun insertBooking(booking: Booking): Boolean {
+        val db = writableDatabase
+        val cv = ContentValues().apply {
+            put("id", booking.id)
+            put("bike_id", booking.bike.id)
+            put("start_date", booking.startDate)
+            put("end_date", booking.endDate)
+            put("total_price", booking.totalPrice)
+            put("status", booking.status.name)
+        }
+        val result = db.insert(TABLE_BOOKINGS, null, cv)
+        db.close()
+        return result != -1L
+    }
+
+    fun deleteBooking(bookingId: String): Boolean {
+        val db = writableDatabase
+        val result = db.delete(TABLE_BOOKINGS, "id=?", arrayOf(bookingId))
+        db.close()
+        return result > 0
+    }
+
+    fun updateBookingStatus(bookingId: String, newStatus: BookingStatus): Boolean {
+        val db = writableDatabase
+        val cv = ContentValues().apply {
+            put("status", newStatus.name)
+        }
+        val result = db.update(TABLE_BOOKINGS, cv, "id=?", arrayOf(bookingId))
+        db.close()
+        return result > 0
+    }
+
+    fun getAllBookings(): List<Booking> {
+        val bookingList = mutableListOf<Booking>()
+        val db = readableDatabase
+        val cursor = db.rawQuery("SELECT * FROM $TABLE_BOOKINGS", null)
+        if (cursor.moveToFirst()) {
+            do {
+                val bikeId = cursor.getInt(cursor.getColumnIndexOrThrow("bike_id"))
+                // Ambil data motor terkait booking ini
+                getBikeById(bikeId)?.let { bike ->
+                    bookingList.add(
+                        Booking(
+                            id = cursor.getString(cursor.getColumnIndexOrThrow("id")),
+                            bike = bike,
+                            startDate = cursor.getString(cursor.getColumnIndexOrThrow("start_date")),
+                            endDate = cursor.getString(cursor.getColumnIndexOrThrow("end_date")),
+                            totalPrice = cursor.getString(cursor.getColumnIndexOrThrow("total_price")),
+                            status = BookingStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status")))
+                        )
+                    )
+                }
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return bookingList
+    }
 }

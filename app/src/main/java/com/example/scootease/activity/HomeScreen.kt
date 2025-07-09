@@ -143,6 +143,7 @@ fun SearchCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth()
     ) {
+        // ... (Isi Card tetap sama)
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Find Your Perfect Ride", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
@@ -163,15 +164,57 @@ fun SearchCard(
     }
 
     if (showStartDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = startDateMillis)
-        DatePickerDialog(onDismissRequest = { showStartDatePicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { onStartDateChanged(it) }; showStartDatePicker = false }) { Text("OK") } }, dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") } }) {
+        // --- PERBAIKAN PADA KALENDER TANGGAL MULAI ---
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = startDateMillis,
+            // Nonaktifkan tanggal sebelum hari ini
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis >= System.currentTimeMillis() - 86400000 // Kurangi 1 hari untuk toleransi zona waktu
+                }
+            }
+        )
+        DatePickerDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        onStartDateChanged(it)
+                        // Jika tanggal selesai lebih awal, samakan dengan tanggal mulai + 1 hari
+                        if (it >= endDateMillis) {
+                            onEndDateChanged(it + 86400000)
+                        }
+                    }
+                    showStartDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") } }
+        ) {
             DatePicker(state = datePickerState)
         }
     }
 
     if (showEndDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = endDateMillis)
-        DatePickerDialog(onDismissRequest = { showEndDatePicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { onEndDateChanged(it) }; showEndDatePicker = false }) { Text("OK") } }, dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") } }) {
+        // --- PERBAIKAN PADA KALENDER TANGGAL SELESAI ---
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = endDateMillis,
+            // Nonaktifkan semua tanggal sebelum tanggal mulai yang dipilih
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis >= startDateMillis
+                }
+            }
+        )
+        DatePickerDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { onEndDateChanged(it) }
+                    showEndDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") } }
+        ) {
             DatePicker(state = datePickerState)
         }
     }
@@ -307,6 +350,11 @@ fun BikeCard(bike: Bike, onBikeSelected: (Bike) -> Unit) {
     }
 }
 
+val sampleBikesForPreview = listOf(
+    Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario, BikeStatus.UNAVAILABLE, BikeType.MATIC),
+    Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC),
+    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy, BikeStatus.AVAILABLE, BikeType.MATIC),
+)
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 1200)
 @Composable
@@ -314,7 +362,7 @@ fun HomeScreenPreview() {
     ScootEaseTheme {
         // Beri nilai default untuk onNavigateToProfile di preview
         HomeScreen(
-            allBikes = allBikes,
+            allBikes = sampleBikesForPreview,
             onNavigateToProfile = {},
             onBikeSelected = { _, _, _ -> }
         )
