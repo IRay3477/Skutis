@@ -24,7 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
 @Composable
-fun MainScreen(username: String, email: String, onLogout: () -> Unit) {
+fun MainScreen(username: String, email: String, allBikes: List<Bike>, onLogout: () -> Unit) {
     var selectedItem by remember { mutableIntStateOf(0) }
 
     Scaffold(
@@ -47,7 +47,7 @@ fun MainScreen(username: String, email: String, onLogout: () -> Unit) {
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedItem) {
-                0 -> HomeScreen(onNavigateToProfile = { selectedItem = 3 })
+                0 -> HomeScreen(allBikes = allBikes, onNavigateToProfile = { selectedItem = 3 })
                 1 -> MapScreen(onNavigateBack = { selectedItem = 0 })
                 2 -> CenterText(text = "Halaman Booking")
                 // Teruskan data ke ProfileScreen

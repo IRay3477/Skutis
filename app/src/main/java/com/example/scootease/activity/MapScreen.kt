@@ -22,6 +22,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.scootease.ui.theme.ScootEaseTheme
 import com.example.scootease.R
+import com.example.scootease.models.BikeStatus
+import com.example.scootease.models.BikeType
 
 // Data contoh untuk motor yang "dipilih" di peta.
 val selectedBikeForMap = Bike(
@@ -30,7 +32,7 @@ val selectedBikeForMap = Bike(
     specs = "155cc · Otomatis · Bagasi Luas",
     price = "120k",
     rating = 4.8,
-    imageRes = R.drawable.yamaha_nmax // Pastikan Anda memiliki gambar ini di res/drawable
+    imageRes = R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC // Pastikan Anda memiliki gambar ini di res/drawable
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

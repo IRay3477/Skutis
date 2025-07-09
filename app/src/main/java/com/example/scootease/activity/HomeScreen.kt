@@ -2,6 +2,7 @@ package com.example.scootease.activity
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,6 +32,9 @@ import com.example.scootease.ui.theme.ScootEaseTheme
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.scootease.R
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.scootease.models.BikeStatus
+import com.example.scootease.models.BikeType
 
 // --- Dummy Data (Data Contoh) ---
 // Di aplikasi nyata, data ini akan berasal dari ViewModel atau API
@@ -43,19 +47,44 @@ val bikeCategories = listOf(
 )
 
 val popularBikes = listOf(
-    Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario),
-    Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax),
-    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy),
-    Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx),
-    Bike(5, "Harley Sporster 48", "1200cc · Manual", "2000k", 4.6, R.drawable.harley_48)
+    Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario, BikeStatus.UNAVAILABLE, BikeType.MATIC),
+    Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC),
+    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy, BikeStatus.AVAILABLE, BikeType.MATIC),
+    Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx, BikeStatus.UNAVAILABLE, BikeType.MATIC),
+    Bike(5, "Harley Sporster 48", "1200cc · Manual", "2000k", 4.6, R.drawable.harley_48, BikeStatus.AVAILABLE, BikeType.MANUAL),
+    Bike(6, "BMW R 1200 GS", "1200cc · Manual", "5000k", 4.5, R.drawable.bmw_r1200gs, BikeStatus.AVAILABLE, BikeType.MANUAL),
+    Bike(7, "Harley Road Glide", "1800cc · Manual", "5500k", 4.5, R.drawable.harley_rg, BikeStatus.AVAILABLE, BikeType.MANUAL)
 )
-// Catatan: Ganti R.drawable.ic_launcher_background dengan gambar motor Anda sendiri nanti.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onNavigateToProfile: () -> Unit) {
+fun HomeScreen(
+    allBikes: List<Bike>,
+    onNavigateToProfile: () -> Unit
+) {
+    var selectedCategory by remember { mutableStateOf("All") }
+    var isSearched by remember { mutableStateOf(false) }
+
+    // Judul sekarang ditentukan secara reaktif berdasarkan state isSearched
+    val listTitle = if (isSearched) "Available Bikes" else "Our Bikes"
+
+    val displayedBikes = remember(selectedCategory, isSearched, allBikes) {
+        // Tentukan daftar dasar: jika sudah dicari, mulai dari yang tersedia saja.
+        val baseList = if (isSearched) {
+            allBikes.filter { it.status == BikeStatus.AVAILABLE }
+        } else {
+            allBikes
+        }
+
+        // Filter lebih lanjut berdasarkan kategori dari daftar dasar tersebut.
+        when (selectedCategory) {
+            "Matic" -> baseList.filter { it.type == BikeType.MATIC }
+            "Manual" -> baseList.filter { it.type == BikeType.MANUAL }
+            else -> baseList // Untuk "All", tampilkan daftar dasar apa adanya.
+        }
+    }
+
     Scaffold(
-        // 2. Teruskan parameter ke TopHeader
         topBar = { TopHeader(onProfileClick = onNavigateToProfile) }
     ) { paddingValues ->
         Column(
@@ -63,17 +92,24 @@ fun HomeScreen(onNavigateToProfile: () -> Unit) {
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
-                SearchCard()
-                CategoriesSection()
-                PopularBikesSection()
-                PromotionBanner()
+                SearchCard(
+                    onSearchClicked = { startDate, endDate ->
+                        isSearched = true
+                    }
+                )
+                CategoriesSection(
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { category ->
+                        selectedCategory = category
+                    }
+                )
+                PopularBikesSection(title = listTitle, bikes = displayedBikes)
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -116,21 +152,19 @@ fun TopHeader(onProfileClick: () -> Unit) {
     )
 }
 
-// ... (Sisa fungsi Composable lainnya seperti SearchCard, CategoriesSection, dll. letakkan di sini)
-// ... (Salin semua fungsi Composable dari kode sebelumnya ke sini)
-// Untuk keringkasan, saya tidak menyalin ulang semua fungsi, tetapi Anda harus melakukannya.
-// Salin semua fungsi dari @Composable fun SearchCard() sampai @Composable fun BottomNavigationBar() dari jawaban sebelumnya.
-// Kode dari `SearchCard` sampai `BottomNavigationBar` yang ada di jawaban sebelumnya sudah benar, cukup salin ke sini.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchCard() {
-    // Helper to format dates
-    fun getPlaceholderDate(daysToAdd: Int): String {
-        val calendar = Calendar.getInstance()
-        calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
-        val dateFormat = SimpleDateFormat("EEE, MMM d, hh:mm a", Locale.getDefault())
-        return dateFormat.format(calendar.time)
+fun SearchCard(onSearchClicked: (startDateMillis: Long?, endDateMillis: Long?) -> Unit) {
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    var selectedStartDateMillis by rememberSaveable { mutableStateOf<Long?>(System.currentTimeMillis()) }
+    var selectedEndDateMillis by rememberSaveable { mutableStateOf<Long?>(System.currentTimeMillis() + 86400000) }
+
+    fun formatMillisToDate(millis: Long?): String {
+        if (millis == null) return "Choose date"
+        val calendar = Calendar.getInstance().apply { timeInMillis = millis }
+        return SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(calendar.time)
     }
 
     Card(
@@ -139,83 +173,95 @@ fun SearchCard() {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "Find Your Perfect Ride",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                "Search for the best motorbikes in your area.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
+            Text("Find Your Perfect Ride", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Text Fields for dates
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                placeholder = { Text("Start: ${getPlaceholderDate(0)}") },
-                leadingIcon = { Icon(Icons.Outlined.CalendarMonth, "Start Date") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
+            Box(modifier = Modifier.clickable { showStartDatePicker = true }) {
+                OutlinedTextField(
+                    value = formatMillisToDate(selectedStartDateMillis),
+                    onValueChange = {},
+                    enabled = false,
+                    label = { Text("Starting Date") },
+                    leadingIcon = { Icon(Icons.Outlined.CalendarMonth, "Start Date") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface)
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                placeholder = { Text("End: ${getPlaceholderDate(1)}") },
-                leadingIcon = { Icon(Icons.Outlined.EventAvailable, "End Date") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
+            Box(modifier = Modifier.clickable { showEndDatePicker = true }) {
+                OutlinedTextField(
+                    value = formatMillisToDate(selectedEndDateMillis),
+                    onValueChange = {},
+                    enabled = false,
+                    label = { Text("Ending Date") },
+                    leadingIcon = { Icon(Icons.Outlined.EventAvailable, "End Date") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface)
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Search Button
             Button(
-                onClick = { /* Handle search */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
+                onClick = { onSearchClicked(selectedStartDateMillis, selectedEndDateMillis) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Filled.Search, "Search Icon", modifier = Modifier.size(ButtonDefaults.IconSize))
+                Icon(Icons.Filled.Search, "Search Icon")
                 Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
                 Text("Search", fontWeight = FontWeight.Bold)
             }
         }
     }
+
+    if (showStartDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedStartDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    selectedStartDateMillis = datePickerState.selectedDateMillis
+                    showStartDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") } }
+        ) { DatePicker(state = datePickerState) }
+    }
+
+    if (showEndDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedEndDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    selectedEndDateMillis = datePickerState.selectedDateMillis
+                    showEndDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") } }
+        ) { DatePicker(state = datePickerState) }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoriesSection() {
-    var selectedCategory by remember { mutableStateOf("All") }
+fun CategoriesSection(
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    // Daftar kategori yang akan ditampilkan
+    val categories = listOf("All", "Matic", "Manual")
 
     Column {
-        Text(
-            "Categories",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Text("Categories", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(bikeCategories) { category ->
-                val isSelected = category.name == selectedCategory
+            items(categories) { category ->
                 FilterChip(
-                    selected = isSelected,
-                    onClick = { selectedCategory = category.name },
-                    label = { Text(category.name) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    selected = category == selectedCategory,
+                    onClick = { onCategorySelected(category) }, // Panggil callback saat diklik
+                    label = { Text(category) }
                 )
             }
         }
@@ -224,7 +270,7 @@ fun CategoriesSection() {
 
 
 @Composable
-fun PopularBikesSection() {
+fun PopularBikesSection(title: String, bikes: List<Bike>) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -232,19 +278,18 @@ fun PopularBikesSection() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Popular Near You",
+                text = title, // Gunakan judul dari parameter
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            TextButton(onClick = { /* Handle See All */ }) {
-                Text("See All", fontWeight = FontWeight.SemiBold)
-            }
+
         }
         Spacer(modifier = Modifier.height(4.dp))
+        // Tampilkan daftar motor dari parameter
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(popularBikes) { bike ->
+            items(bikes) { bike ->
                 BikeCard(bike)
             }
         }
@@ -258,109 +303,113 @@ fun BikeCard(bike: Bike) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.width(200.dp)
     ) {
-                Column {
-                    // =================================================================
-                    // BAGIAN PENTING YANG HARUS ANDA PERBAIKI ADA DI SINI
-                    // Ganti Box placeholder dengan komponen Image yang sebenarnya.
-                    // =================================================================
-                    Image(
-                        painter = painterResource(id = bike.imageRes), // Menggunakan ID gambar dari data `Bike`
-                        contentDescription = bike.name, // Deskripsi untuk aksesibilitas
-                        modifier = Modifier
-                            .height(120.dp)
-                            .fillMaxWidth(),
-                        contentScale = ContentScale.Crop // Ini memastikan gambar memenuhi area tanpa gepeng (distorsi)
+        Column {
+            Box(modifier = Modifier.height(120.dp).fillMaxWidth()) {
+                Image(
+                    painter = painterResource(id = bike.imageRes),
+                    contentDescription = bike.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(
+                            color = if (bike.status == BikeStatus.AVAILABLE) Color(0xFF4CAF50) else Color(0xFFE53935)
+                        )
+                        .border(1.dp, Color.White, CircleShape)
+                )
+            }
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    text = bike.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = bike.specs,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "IDR ${bike.price}/day",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
                     )
-
-                    // Bagian bawah kartu (teks) kemungkinan sudah benar,
-                    // tapi kita sertakan lagi untuk memastikan.
-                    Column(Modifier.padding(12.dp)) {
-                        Text(
-                            text = bike.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = "Rating",
+                            tint = Color(0xFFFFC700),
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            text = bike.specs,
+                            text = bike.rating.toString(),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "IDR ${bike.price}/day",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Star,
-                                    contentDescription = "Rating",
-                                    tint = Color(0xFFFFC700),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = bike.rating.toString(),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
                     }
                 }
             }
         }
-
-@Composable
-fun PromotionBanner() {
-    val gradientBrush = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF6200EE), Color(0xFF3700B3))
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(brush = gradientBrush)
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Weekly Rider Deals",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    "Get up to 20% off for long rentals!",
-                    color = Color.White.copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Button(
-                onClick = { /* Handle View Deals */ },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("View Deals", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-            }
-        }
     }
 }
+
+//@Composable
+//fun PromotionBanner() {
+//    val gradientBrush = Brush.horizontalGradient(
+//        colors = listOf(Color(0xFF6200EE), Color(0xFF3700B3))
+//    )
+//    Box(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .clip(RoundedCornerShape(16.dp))
+//            .background(brush = gradientBrush)
+//            .padding(16.dp)
+//    ) {
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween,
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Column(modifier = Modifier.weight(1f)) {
+//                Text(
+//                    "Weekly Rider Deals",
+//                    color = Color.White,
+//                    fontWeight = FontWeight.Bold,
+//                    style = MaterialTheme.typography.titleLarge
+//                )
+//                Text(
+//                    "Get up to 20% off for long rentals!",
+//                    color = Color.White.copy(alpha = 0.8f),
+//                    style = MaterialTheme.typography.bodySmall
+//                )
+//            }
+//            Button(
+//                onClick = { /* Handle View Deals */ },
+//                colors = ButtonDefaults.buttonColors(
+//                    containerColor = Color.White,
+//                    contentColor = MaterialTheme.colorScheme.primary
+//                )
+//            ) {
+//                Text("View Deals", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+//            }
+//        }
+//    }
+//}
 
 
 //@Composable
@@ -418,6 +467,9 @@ fun PromotionBanner() {
 fun HomeScreenPreview() {
     ScootEaseTheme {
         // Beri nilai default untuk onNavigateToProfile di preview
-        HomeScreen(onNavigateToProfile = {})
+        HomeScreen(
+            allBikes = popularBikes,
+            onNavigateToProfile = {}
+        )
     }
 }

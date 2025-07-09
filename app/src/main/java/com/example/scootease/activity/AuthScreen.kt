@@ -83,9 +83,9 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(painter = painterResource(id = R.drawable.ic_launcher_foreground), contentDescription = "Logo Aplikasi", modifier = Modifier.size(120.dp).padding(bottom = 16.dp))
-        Text(text = "Selamat Datang Kembali", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(text = "Login untuk melanjutkan petualanganmu!", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 32.dp))
+        Image(painter = painterResource(id = R.drawable.ic_launcher_round), contentDescription = "Logo Aplikasi", modifier = Modifier.size(120.dp).padding(bottom = 16.dp))
+        Text(text = "Welcome Back", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(text = "Login to continue your journey!", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 32.dp))
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Email, "Email Icon") })
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Lock, "Password Icon") }, visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = {
@@ -114,8 +114,8 @@ fun LoginScreen(
             Text("Login", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
         Row(modifier = Modifier.padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Belum punya akun?")
-            TextButton(onClick = onSwitchToRegister) { Text("Daftar di sini") }
+            Text("Don't have an account yet?")
+            TextButton(onClick = onSwitchToRegister) { Text("Register now") }
         }
     }
 }
@@ -131,6 +131,8 @@ fun RegisterScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     val dbHelper = remember { DBHelper(context) }
@@ -140,49 +142,89 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Buat Akun Baru", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(text = "Satu langkah lagi untuk mulai menjelajah.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 32.dp))
-        OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Nama Lengkap") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Person, "Nama Icon") })
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher_round), // Ganti dengan nama file logo Anda
+            contentDescription = "Logo Scoot Ease",
+            modifier = Modifier
+                .height(80.dp) // Dibuat sedikit lebih kecil
+                .padding(bottom = 24.dp)
+        )
+
+        Text(text = "Create New Account", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(text = "One more step to start exploring.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 32.dp))
+        OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Person, "Nama Icon") })
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Email, "Email Icon") })
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Lock, "Password Icon") })
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Default.Lock, "Password Icon") },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                val description = if (passwordVisible) "Sembunyikan password" else "Tampilkan password"
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(imageVector = image, description)
+                }
+            }
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = { Text("Konfirmasi Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Lock, "Password Icon") })
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Default.Lock, "Password Icon") },
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                val image = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                val description = if (confirmPasswordVisible) "Sembunyikan password" else "Tampilkan password"
+                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    Icon(imageVector = image, description)
+                }
+            }
+        )
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = {
                 if (fullName.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-                    Toast.makeText(context, "Harap isi semua kolom.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Please fill in all fields.", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
                 if (password != confirmPassword) {
-                    Toast.makeText(context, "Password tidak cocok.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Passwords do not match.", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
                 if (dbHelper.isEmailExists(email)) {
-                    Toast.makeText(context, "Email sudah terdaftar.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Email is already registered.", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
                 val user = User(username = fullName, email = email, password = password)
                 val success = dbHelper.registerUser(user)
                 if (success) {
-                    Toast.makeText(context, "Registrasi berhasil!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Registration successful!", Toast.LENGTH_LONG).show()
                     // PERBAIKAN: Kirim seluruh objek User yang baru dibuat
                     onRegisterSuccess(user)
                 } else {
-                    Toast.makeText(context, "Registrasi gagal, coba lagi.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Registration failed, please try again.", Toast.LENGTH_SHORT).show()
                 }
             },
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Text("Daftar", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text("Register", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
         Row(modifier = Modifier.padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Sudah punya akun?")
-            TextButton(onClick = onSwitchToLogin) { Text("Login di sini") }
+            Text("Already have an account?")
+            TextButton(onClick = onSwitchToLogin) { Text("Login") }
         }
     }
 }
