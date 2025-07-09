@@ -17,40 +17,49 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 
 @Composable
-fun MainScreen(username: String, email: String, allBikes: List<Bike>, onLogout: () -> Unit) {
-    var selectedItem by remember { mutableIntStateOf(0) }
-
+fun MainScreen(
+    username: String,
+    email: String,
+    allBikes: List<Bike>,
+    onLogout: () -> Unit,
+    onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
+    activeTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
     Scaffold(
         bottomBar = {
             NavigationBar {
                 val items = listOf("Home", "Map", "Bookings", "Profile")
-                val icons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
+                val outlinedIcons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
                 val filledIcons = listOf(Icons.Filled.Home, Icons.Filled.Map, Icons.Filled.Article, Icons.Filled.Person)
 
                 items.forEachIndexed { index, item ->
                     NavigationBarItem(
                         label = { Text(item) },
-                        selected = selectedItem == index,
-                        onClick = { selectedItem = index },
-                        icon = { val icon = if (selectedItem == index) filledIcons[index] else icons[index]; Icon(icon, contentDescription = item) }
+                        selected = activeTab == index,
+                        onClick = { onTabSelected(index) },
+                        icon = {
+                            val icon = if (activeTab == index) filledIcons[index] else outlinedIcons[index]
+                            Icon(icon, contentDescription = item)
+                        }
                     )
                 }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            when (selectedItem) {
-                0 -> HomeScreen(allBikes = allBikes, onNavigateToProfile = { selectedItem = 3 })
-                1 -> MapScreen(onNavigateBack = { selectedItem = 0 })
-                2 -> CenterText(text = "Halaman Booking")
-                // Teruskan data ke ProfileScreen
+            when (activeTab) {
+                0 -> HomeScreen(
+                    allBikes = allBikes,
+                    onNavigateToProfile = { onTabSelected(3) },
+                    onBikeSelected = onBikeSelectedForBooking
+                )
+                1 -> MapScreen(onNavigateBack = { onTabSelected(0) })
+                2 -> BookingsScreen()
                 3 -> ProfileScreen(username = username, email = email, onLogoutClick = onLogout)
             }
         }

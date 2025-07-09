@@ -36,80 +36,53 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.scootease.models.BikeStatus
 import com.example.scootease.models.BikeType
 
-// --- Dummy Data (Data Contoh) ---
-// Di aplikasi nyata, data ini akan berasal dari ViewModel atau API
-val bikeCategories = listOf(
-    Category("All"),
-    Category("Scooter"),
-    Category("Sport"),
-    Category("Adventure"),
-    Category("Classic")
-)
-
-val popularBikes = listOf(
-    Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario, BikeStatus.UNAVAILABLE, BikeType.MATIC),
-    Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC),
-    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy, BikeStatus.AVAILABLE, BikeType.MATIC),
-    Bike(4, "Honda PCX", "150cc · Auto", "150k", 4.7, R.drawable.honda_pcx, BikeStatus.UNAVAILABLE, BikeType.MATIC),
-    Bike(5, "Harley Sporster 48", "1200cc · Manual", "2000k", 4.6, R.drawable.harley_48, BikeStatus.AVAILABLE, BikeType.MANUAL),
-    Bike(6, "BMW R 1200 GS", "1200cc · Manual", "5000k", 4.5, R.drawable.bmw_r1200gs, BikeStatus.AVAILABLE, BikeType.MANUAL),
-    Bike(7, "Harley Road Glide", "1800cc · Manual", "5500k", 4.5, R.drawable.harley_rg, BikeStatus.AVAILABLE, BikeType.MANUAL)
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     allBikes: List<Bike>,
-    onNavigateToProfile: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onBikeSelected: (bike: Bike, startDate: Long, endDate: Long) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("All") }
     var isSearched by remember { mutableStateOf(false) }
+    // State untuk tanggal yang dipilih di SearchCard
+    var searchStartDate by rememberSaveable { mutableStateOf(System.currentTimeMillis()) }
+    var searchEndDate by rememberSaveable { mutableStateOf(System.currentTimeMillis() + 86400000) }
 
-    // Judul sekarang ditentukan secara reaktif berdasarkan state isSearched
     val listTitle = if (isSearched) "Available Bikes" else "Our Bikes"
-
     val displayedBikes = remember(selectedCategory, isSearched, allBikes) {
-        // Tentukan daftar dasar: jika sudah dicari, mulai dari yang tersedia saja.
-        val baseList = if (isSearched) {
-            allBikes.filter { it.status == BikeStatus.AVAILABLE }
-        } else {
-            allBikes
-        }
-
-        // Filter lebih lanjut berdasarkan kategori dari daftar dasar tersebut.
+        val baseList = if (isSearched) allBikes.filter { it.status == BikeStatus.AVAILABLE } else allBikes
         when (selectedCategory) {
             "Matic" -> baseList.filter { it.type == BikeType.MATIC }
             "Manual" -> baseList.filter { it.type == BikeType.MANUAL }
-            else -> baseList // Untuk "All", tampilkan daftar dasar apa adanya.
+            else -> baseList
         }
     }
 
-    Scaffold(
-        topBar = { TopHeader(onProfileClick = onNavigateToProfile) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
+    Scaffold(topBar = { TopHeader(onProfileClick = onNavigateToProfile) }) { paddingValues ->
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 Spacer(modifier = Modifier.height(8.dp))
                 SearchCard(
-                    onSearchClicked = { startDate, endDate ->
-                        isSearched = true
-                    }
+                    // Update tanggal saat dipilih di kalender
+                    startDateMillis = searchStartDate,
+                    endDateMillis = searchEndDate,
+                    onStartDateChanged = { searchStartDate = it },
+                    onEndDateChanged = { searchEndDate = it },
+                    onSearchClicked = { isSearched = true }
                 )
                 CategoriesSection(
                     selectedCategory = selectedCategory,
-                    onCategorySelected = { category ->
-                        selectedCategory = category
+                    onCategorySelected = { selectedCategory = it }
+                )
+                // Teruskan callback onBikeSelected ke PopularBikesSection
+                PopularBikesSection(
+                    title = listTitle,
+                    bikes = displayedBikes,
+                    onBikeSelected = { bike ->
+                        onBikeSelected(bike, searchStartDate, searchEndDate)
                     }
                 )
-                PopularBikesSection(title = listTitle, bikes = displayedBikes)
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -155,14 +128,17 @@ fun TopHeader(onProfileClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchCard(onSearchClicked: (startDateMillis: Long?, endDateMillis: Long?) -> Unit) {
+fun SearchCard(
+    startDateMillis: Long,
+    endDateMillis: Long,
+    onStartDateChanged: (Long) -> Unit,
+    onEndDateChanged: (Long) -> Unit,
+    onSearchClicked: () -> Unit
+) {
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
-    var selectedStartDateMillis by rememberSaveable { mutableStateOf<Long?>(System.currentTimeMillis()) }
-    var selectedEndDateMillis by rememberSaveable { mutableStateOf<Long?>(System.currentTimeMillis() + 86400000) }
 
-    fun formatMillisToDate(millis: Long?): String {
-        if (millis == null) return "Choose date"
+    fun formatMillisToDate(millis: Long): String {
         val calendar = Calendar.getInstance().apply { timeInMillis = millis }
         return SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(calendar.time)
     }
@@ -173,72 +149,36 @@ fun SearchCard(onSearchClicked: (startDateMillis: Long?, endDateMillis: Long?) -
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Find Your Perfect Ride", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text("Find Your Perfect Ride", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
-
             Box(modifier = Modifier.clickable { showStartDatePicker = true }) {
-                OutlinedTextField(
-                    value = formatMillisToDate(selectedStartDateMillis),
-                    onValueChange = {},
-                    enabled = false,
-                    label = { Text("Starting Date") },
-                    leadingIcon = { Icon(Icons.Outlined.CalendarMonth, "Start Date") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface)
-                )
+                OutlinedTextField(value = formatMillisToDate(startDateMillis), onValueChange = {}, enabled = false, label = { Text("Tanggal Mulai") }, leadingIcon = { Icon(Icons.Outlined.CalendarMonth, "Start Date") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Box(modifier = Modifier.clickable { showEndDatePicker = true }) {
-                OutlinedTextField(
-                    value = formatMillisToDate(selectedEndDateMillis),
-                    onValueChange = {},
-                    enabled = false,
-                    label = { Text("Ending Date") },
-                    leadingIcon = { Icon(Icons.Outlined.EventAvailable, "End Date") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface)
-                )
+                OutlinedTextField(value = formatMillisToDate(endDateMillis), onValueChange = {}, enabled = false, label = { Text("Tanggal Selesai") }, leadingIcon = { Icon(Icons.Outlined.EventAvailable, "End Date") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface))
             }
             Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { onSearchClicked(selectedStartDateMillis, selectedEndDateMillis) },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            Button(onClick = onSearchClicked, modifier = Modifier.fillMaxWidth().height(50.dp)) {
                 Icon(Icons.Filled.Search, "Search Icon")
-                Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                Text("Search", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Search")
             }
         }
     }
 
     if (showStartDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedStartDateMillis)
-        DatePickerDialog(
-            onDismissRequest = { showStartDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    selectedStartDateMillis = datePickerState.selectedDateMillis
-                    showStartDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") } }
-        ) { DatePicker(state = datePickerState) }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = startDateMillis)
+        DatePickerDialog(onDismissRequest = { showStartDatePicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { onStartDateChanged(it) }; showStartDatePicker = false }) { Text("OK") } }, dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") } }) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     if (showEndDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedEndDateMillis)
-        DatePickerDialog(
-            onDismissRequest = { showEndDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    selectedEndDateMillis = datePickerState.selectedDateMillis
-                    showEndDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") } }
-        ) { DatePicker(state = datePickerState) }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = endDateMillis)
+        DatePickerDialog(onDismissRequest = { showEndDatePicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { onEndDateChanged(it) }; showEndDatePicker = false }) { Text("OK") } }, dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") } }) {
+            DatePicker(state = datePickerState)
+        }
     }
 }
 
@@ -270,7 +210,7 @@ fun CategoriesSection(
 
 
 @Composable
-fun PopularBikesSection(title: String, bikes: List<Bike>) {
+fun PopularBikesSection(title: String, bikes: List<Bike>, onBikeSelected: (Bike) -> Unit) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -283,32 +223,36 @@ fun PopularBikesSection(title: String, bikes: List<Bike>) {
                 fontWeight = FontWeight.Bold
             )
 
+
         }
         Spacer(modifier = Modifier.height(4.dp))
         // Tampilkan daftar motor dari parameter
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             items(bikes) { bike ->
-                BikeCard(bike)
+                BikeCard(bike = bike, onBikeSelected = onBikeSelected)
             }
         }
     }
 }
 
 @Composable
-fun BikeCard(bike: Bike) {
+fun BikeCard(bike: Bike, onBikeSelected: (Bike) -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.width(200.dp)
+        modifier = Modifier
+            .width(250.dp)
+            // Hanya bisa diklik jika statusnya AVAILABLE
+            .clickable(enabled = bike.status == BikeStatus.AVAILABLE) {
+                onBikeSelected(bike)
+            }
     ) {
         Column {
-            Box(modifier = Modifier.height(120.dp).fillMaxWidth()) {
+            Box(modifier = Modifier.height(200.dp).fillMaxWidth()) {
                 Image(
                     painter = painterResource(id = bike.imageRes),
                     contentDescription = bike.name,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth(),
                     contentScale = ContentScale.Crop
                 )
                 Box(
@@ -368,99 +312,6 @@ fun BikeCard(bike: Bike) {
     }
 }
 
-//@Composable
-//fun PromotionBanner() {
-//    val gradientBrush = Brush.horizontalGradient(
-//        colors = listOf(Color(0xFF6200EE), Color(0xFF3700B3))
-//    )
-//    Box(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .clip(RoundedCornerShape(16.dp))
-//            .background(brush = gradientBrush)
-//            .padding(16.dp)
-//    ) {
-//        Row(
-//            modifier = Modifier.fillMaxWidth(),
-//            horizontalArrangement = Arrangement.SpaceBetween,
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Column(modifier = Modifier.weight(1f)) {
-//                Text(
-//                    "Weekly Rider Deals",
-//                    color = Color.White,
-//                    fontWeight = FontWeight.Bold,
-//                    style = MaterialTheme.typography.titleLarge
-//                )
-//                Text(
-//                    "Get up to 20% off for long rentals!",
-//                    color = Color.White.copy(alpha = 0.8f),
-//                    style = MaterialTheme.typography.bodySmall
-//                )
-//            }
-//            Button(
-//                onClick = { /* Handle View Deals */ },
-//                colors = ButtonDefaults.buttonColors(
-//                    containerColor = Color.White,
-//                    contentColor = MaterialTheme.colorScheme.primary
-//                )
-//            ) {
-//                Text("View Deals", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-//            }
-//        }
-//    }
-//}
-
-
-//@Composable
-//fun BottomNavigationBar() {
-//    // State untuk mengingat item mana yang sedang dipilih
-//    var selectedItem by remember { mutableIntStateOf(0) }
-//
-//    // Daftar nama untuk setiap item navigasi
-//    val items = listOf("Home", "Map", "Bookings", "Profile")
-//
-//    // Daftar ikon versi "Outlined" (saat tidak dipilih)
-//    // FIX: Mengganti ListAlt yang usang dengan Article
-//    val outlinedIcons = listOf(
-//        Icons.Outlined.Home,
-//        Icons.Outlined.Map,
-//        Icons.Outlined.Article, // Menggantikan ListAlt
-//        Icons.Outlined.Person
-//    )
-//
-//    // Daftar ikon versi "Filled" (saat dipilih)
-//    // FIX: Mengganti ListAlt yang usang dengan Article
-//    val filledIcons = listOf(
-//        Icons.Filled.Home,
-//        Icons.Filled.Map,
-//        Icons.Filled.Article, // Menggantikan ListAlt
-//        Icons.Filled.Person
-//    )
-//
-//    NavigationBar {
-//        items.forEachIndexed { index, item ->
-//            NavigationBarItem(
-//                // Label teks di bawah ikon
-//                label = { Text(item) },
-//
-//                // Cek apakah item ini sedang dipilih
-//                selected = selectedItem == index,
-//
-//                // Aksi saat item diklik (update state)
-//                onClick = { selectedItem = index },
-//
-//                // Logika untuk menampilkan ikon yang benar
-//                icon = {
-//                    // Gunakan ikon 'filled' jika terpilih, jika tidak, gunakan 'outlined'
-//                    val icon = if (selectedItem == index) filledIcons[index] else outlinedIcons[index]
-//                    Icon(icon, contentDescription = item)
-//                }
-//            )
-//        }
-//    }
-//}
-
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 1200)
 @Composable
@@ -468,8 +319,9 @@ fun HomeScreenPreview() {
     ScootEaseTheme {
         // Beri nilai default untuk onNavigateToProfile di preview
         HomeScreen(
-            allBikes = popularBikes,
-            onNavigateToProfile = {}
+            allBikes = allBikes,
+            onNavigateToProfile = {},
+            onBikeSelected = { _, _, _ -> }
         )
     }
 }

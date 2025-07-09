@@ -1,0 +1,165 @@
+package com.example.scootease.activity
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.scootease.R
+import com.example.scootease.activity.Bike
+import com.example.scootease.models.BikeStatus
+import com.example.scootease.models.BikeType
+import com.example.scootease.models.Booking
+import com.example.scootease.models.BookingStatus
+import com.example.scootease.ui.theme.ScootEaseTheme
+
+// --- Data Contoh (Dummy Data) ---
+val sampleBookings = listOf(
+    Booking("SC-001", Bike(1, "Honda Vario 160", "160cc", "85k", 4.9, R.drawable.honda_vario, BikeStatus.AVAILABLE, BikeType.MATIC), "9 Jul 2025", "11 Jul 2025", "IDR 255k", BookingStatus.ONGOING),
+    Booking("SC-002", Bike(7, "Harley Road Glide", "1800cc", "5500k", 4.6, R.drawable.harley_rg, BikeStatus.AVAILABLE, BikeType.MANUAL), "1 Jul 2025", "2 Jul 2025", "IDR 5500k", BookingStatus.COMPLETED),
+    Booking("SC-003", Bike(3, "Honda Scoopy", "110cc", "75k", 4.9, R.drawable.honda_scoopy, BikeStatus.AVAILABLE, BikeType.MATIC), "28 Jun 2025", "30 Jun 2025", "IDR 225k", BookingStatus.COMPLETED),
+    Booking("SC-004", Bike(2, "Yamaha NMAX", "155cc", "120k", 4.8, R.drawable.yamaha_nmax, BikeStatus.UNAVAILABLE, BikeType.MATIC), "25 Jun 2025", "26 Jun 2025", "IDR 120k", BookingStatus.CANCELLED),
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BookingsScreen() {
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("In The Process", "History")
+
+    // Filter daftar pesanan berdasarkan tab yang dipilih
+    val filteredBookings = remember(selectedTabIndex) {
+        if (selectedTabIndex == 0) { // Tab "Dalam Proses"
+            sampleBookings.filter { it.status == BookingStatus.ONGOING }
+        } else { // Tab "Riwayat"
+            sampleBookings.filter { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Bookings", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+            )
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) {
+            // Tab Row untuk memilih kategori
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(text = title) }
+                    )
+                }
+            }
+
+            // Daftar pesanan
+            if (filteredBookings.isEmpty()) {
+                EmptyState(tabName = tabs[selectedTabIndex])
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(filteredBookings) { booking ->
+                        BookingItemCard(booking = booking)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BookingItemCard(booking: Booking) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = booking.bike.imageRes),
+                contentDescription = booking.bike.name,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(booking.bike.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "${booking.startDate} - ${booking.endDate}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(booking.totalPrice, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+            StatusBadge(status = booking.status)
+        }
+    }
+}
+
+@Composable
+fun StatusBadge(status: BookingStatus) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50)) // Membuat sudut sangat membulat seperti pil
+            .background(status.color.copy(alpha = 0.1f))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = status.displayName,
+            color = status.color,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun EmptyState(tabName: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "There is no order '$tabName'",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun BookingsScreenPreview() {
+    ScootEaseTheme {
+        BookingsScreen()
+    }
+}
