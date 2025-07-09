@@ -4,10 +4,12 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -16,6 +18,7 @@ import com.example.scootease.helpers.DBHelper
 import com.example.scootease.models.Booking
 import com.example.scootease.models.BookingStatus
 import com.example.scootease.services.SessionManager
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,11 +39,20 @@ fun ScootEaseApp() {
 
     var currentScreen by remember { mutableStateOf(if (sessionManager.isLoggedIn()) AppScreen.MAIN else AppScreen.AUTH) }
     var bookingRequest by remember { mutableStateOf<BookingRequest?>(null) }
-    val allBikes by remember { mutableStateOf(dbHelper.getAllBikes()) }
-
-    // --- PERBAIKAN: Inisialisasi state yang benar ---
-    val bookings = remember { mutableStateOf(dbHelper.getAllBookings()) }
+    var selectedBookingDetail by remember { mutableStateOf<Booking?>(null) }
     var mainScreenActiveTab by rememberSaveable { mutableIntStateOf(0) }
+
+    var allBikes by remember { mutableStateOf<List<Bike>>(emptyList()) }
+    var bookings by remember { mutableStateOf<List<Booking>>(emptyList()) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(key1 = currentScreen) {
+        if (currentScreen == AppScreen.MAIN) {
+            allBikes = dbHelper.getAllBikes()
+            bookings = dbHelper.getAllBookings()
+        }
+    }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
@@ -51,7 +63,9 @@ fun ScootEaseApp() {
                 })
             }
             AppScreen.MAIN -> {
-                if (bookingRequest != null) {
+                if (selectedBookingDetail != null) {
+                    ActiveBookingDetailScreen(booking = selectedBookingDetail!!, onNavigateBack = { selectedBookingDetail = null })
+                } else if (bookingRequest != null) {
                     val request = bookingRequest!!
                     val durationInDays = TimeUnit.MILLISECONDS.toDays(request.endDate - request.startDate).coerceAtLeast(1)
                     val pricePerDay = request.bike.price.filter { it.isDigit() }.toIntOrNull() ?: 0
@@ -72,50 +86,43 @@ fun ScootEaseApp() {
                                 totalPrice = totalPriceFormatted,
                                 status = BookingStatus.ONGOING
                             )
-                            if (dbHelper.insertBooking(newBooking)) {
-                                // --- PERBAIKAN: Update nilai state ---
-                                bookings.value = dbHelper.getAllBookings()
-                                bookingRequest = null
-                                mainScreenActiveTab = 2
-                                Toast.makeText(context, "Motorbike successfully booked!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Booking failed!", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                if (dbHelper.insertBooking(newBooking)) {
+                                    bookings = dbHelper.getAllBookings()
+                                    bookingRequest = null
+                                    mainScreenActiveTab = 2
+                                }
                             }
                         }
                     )
                 } else {
-                    val username = sessionManager.getUserName() ?: "Pengguna"
-                    val email = sessionManager.getUserEmail() ?: "Tidak ada email"
-
-                    val ongoingBookings = bookings.value.filter { it.status == BookingStatus.ONGOING }
-                    val historyBookings = bookings.value.filter { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }
+                    val ongoingBookings = bookings.filter { it.status == BookingStatus.ONGOING }
+                    val historyBookings = bookings.filter { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }
 
                     MainScreen(
-                        username = username,
-                        email = email,
+                        username = sessionManager.getUserName() ?: "Pengguna",
+                        email = sessionManager.getUserEmail() ?: "Tidak ada email",
                         allBikes = allBikes,
+                        bikeCount = allBikes.size,
                         ongoingBookings = ongoingBookings,
                         historyBookings = historyBookings,
+                        onBookingSelected = { selectedBookingDetail = it },
                         onDeleteBooking = { bookingToDelete ->
-                            if (dbHelper.deleteBooking(bookingToDelete.id)) {
-                                bookings.value = dbHelper.getAllBookings()
-                                Toast.makeText(context, "Riwayat dihapus", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Gagal menghapus riwayat", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                if (dbHelper.deleteBooking(bookingToDelete.id)) {
+                                    bookings = dbHelper.getAllBookings()
+                                }
                             }
                         },
                         onCompleteBooking = { bookingToComplete ->
-                            if (dbHelper.updateBookingStatus(bookingToComplete.id, BookingStatus.COMPLETED)) {
-                                bookings.value = dbHelper.getAllBookings()
-                                Toast.makeText(context, "Pesanan diselesaikan", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Gagal menyelesaikan pesanan", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                if (dbHelper.updateBookingStatus(bookingToComplete.id, BookingStatus.COMPLETED)) {
+                                    bookings = dbHelper.getAllBookings()
+                                }
                             }
                         },
                         onLogout = {
                             sessionManager.clearSession()
-                            // --- PERBAIKAN: Update nilai state menjadi daftar kosong ---
-                            bookings.value = emptyList()
                             currentScreen = AppScreen.AUTH
                         },
                         onBikeSelectedForBooking = { bike, startDate, endDate ->

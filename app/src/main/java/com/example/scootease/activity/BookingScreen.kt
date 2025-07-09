@@ -2,6 +2,7 @@ package com.example.scootease.activity
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,6 +40,7 @@ val sampleBookings = listOf(
 fun BookingsScreen(
     ongoingBookings: List<Booking>,
     historyBookings: List<Booking>,
+    onBookingSelected: (Booking) -> Unit,
     onDeleteBooking: (Booking) -> Unit,
     onCompleteBooking: (Booking) -> Unit
 ) {
@@ -76,7 +78,12 @@ fun BookingsScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(ongoingBookings, key = { it.id }) { booking ->
-                                BookingItemCard(booking = booking, onCompleteClick = { onCompleteBooking(booking) })
+                                BookingItemCard(
+                                    booking = booking,
+                                    // --- Teruskan callback ---
+                                    onCardClick = { onBookingSelected(booking) },
+                                    onCompleteClick = { onCompleteBooking(booking) }
+                                )
                             }
                         }
                     }
@@ -115,11 +122,15 @@ fun BookingsScreen(
 @Composable
 fun BookingItemCard(
     booking: Booking,
+    // --- Tambahkan parameter ini ---
+    onCardClick: (() -> Unit)? = null,
     onDeleteClick: (() -> Unit)? = null,
     onCompleteClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = onCardClick != null, onClick = { onCardClick?.invoke() }),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -215,6 +226,7 @@ fun BookingsScreenPreview() {
             historyBookings = sampleBookings.filter { it.status != BookingStatus.ONGOING },
             onDeleteBooking = {},
             onCompleteBooking = {},
+            onBookingSelected = {},
         )
     }
 }

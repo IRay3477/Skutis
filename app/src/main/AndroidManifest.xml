@@ -17,6 +17,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ScootEase"
         tools:targetApi="31">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBP_IGsGRBsWgd59HWYL495evFdwNmigys" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

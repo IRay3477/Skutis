@@ -40,12 +40,12 @@ import com.example.scootease.models.BikeType
 @Composable
 fun HomeScreen(
     allBikes: List<Bike>,
+    bikeCount: Int,
     onNavigateToProfile: () -> Unit,
     onBikeSelected: (bike: Bike, startDate: Long, endDate: Long) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("All") }
     var isSearched by remember { mutableStateOf(false) }
-    // State untuk tanggal yang dipilih di SearchCard
     var searchStartDate by rememberSaveable { mutableStateOf(System.currentTimeMillis()) }
     var searchEndDate by rememberSaveable { mutableStateOf(System.currentTimeMillis() + 86400000) }
 
@@ -59,15 +59,24 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(topBar = { TopHeader(onProfileClick = onNavigateToProfile) }) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).verticalScroll(rememberScrollState())) {
+    Scaffold(topBar = { TopHeader(bikeCount = bikeCount, onProfileClick = onNavigateToProfile) }) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
             Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 Spacer(modifier = Modifier.height(8.dp))
                 SearchCard(
-                    // Update tanggal saat dipilih di kalender
                     startDateMillis = searchStartDate,
                     endDateMillis = searchEndDate,
-                    onStartDateChanged = { searchStartDate = it },
+                    onStartDateChanged = { newDate ->
+                        searchStartDate = newDate
+                        if (newDate >= searchEndDate) {
+                            searchEndDate = newDate + 86400000
+                        }
+                    },
                     onEndDateChanged = { searchEndDate = it },
                     onSearchClicked = { isSearched = true }
                 )
@@ -75,7 +84,6 @@ fun HomeScreen(
                     selectedCategory = selectedCategory,
                     onCategorySelected = { selectedCategory = it }
                 )
-                // Teruskan callback onBikeSelected ke PopularBikesSection
                 PopularBikesSection(
                     title = listTitle,
                     bikes = displayedBikes,
@@ -89,14 +97,13 @@ fun HomeScreen(
     }
 }
 
-// 3. TopHeader sekarang menerima parameter onProfileClick
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopHeader(onProfileClick: () -> Unit) {
+fun TopHeader(bikeCount: Int, onProfileClick: () -> Unit) {
     TopAppBar(
         title = {
             Column {
-                Text("Your Location", style = MaterialTheme.typography.labelSmall)
+                Text("Total Bikes Loaded: $bikeCount", style = MaterialTheme.typography.labelSmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.LocationOn, "Location", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -106,9 +113,8 @@ fun TopHeader(onProfileClick: () -> Unit) {
         },
         actions = {
             Spacer(modifier = Modifier.width(8.dp))
-            // 4. Tambahkan modifier .clickable ke gambar avatar
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground), // Ganti dengan avatar
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = "User Avatar",
                 modifier = Modifier
                     .size(36.dp)
@@ -119,7 +125,6 @@ fun TopHeader(onProfileClick: () -> Unit) {
         }
     )
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,7 +148,6 @@ fun SearchCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // ... (Isi Card tetap sama)
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Find Your Perfect Ride", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
@@ -164,13 +168,11 @@ fun SearchCard(
     }
 
     if (showStartDatePicker) {
-        // --- PERBAIKAN PADA KALENDER TANGGAL MULAI ---
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = startDateMillis,
-            // Nonaktifkan tanggal sebelum hari ini
             selectableDates = object : SelectableDates {
                 override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                    return utcTimeMillis >= System.currentTimeMillis() - 86400000 // Kurangi 1 hari untuk toleransi zona waktu
+                    return utcTimeMillis >= System.currentTimeMillis() - 86400000
                 }
             }
         )
@@ -178,13 +180,7 @@ fun SearchCard(
             onDismissRequest = { showStartDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let {
-                        onStartDateChanged(it)
-                        // Jika tanggal selesai lebih awal, samakan dengan tanggal mulai + 1 hari
-                        if (it >= endDateMillis) {
-                            onEndDateChanged(it + 86400000)
-                        }
-                    }
+                    datePickerState.selectedDateMillis?.let { onStartDateChanged(it) }
                     showStartDatePicker = false
                 }) { Text("OK") }
             },
@@ -195,10 +191,8 @@ fun SearchCard(
     }
 
     if (showEndDatePicker) {
-        // --- PERBAIKAN PADA KALENDER TANGGAL SELESAI ---
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = endDateMillis,
-            // Nonaktifkan semua tanggal sebelum tanggal mulai yang dipilih
             selectableDates = object : SelectableDates {
                 override fun isSelectableDate(utcTimeMillis: Long): Boolean {
                     return utcTimeMillis >= startDateMillis
@@ -220,32 +214,28 @@ fun SearchCard(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoriesSection(
     selectedCategory: String,
     onCategorySelected: (String) -> Unit
 ) {
-    // Daftar kategori yang akan ditampilkan
     val categories = listOf("All", "Matic", "Manual")
-
     Column {
         Text("Categories", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(categories) { category ->
                 FilterChip(
                     selected = category == selectedCategory,
-                    onClick = { onCategorySelected(category) }, // Panggil callback saat diklik
+                    onClick = { onCategorySelected(category) },
                     label = { Text(category) }
                 )
             }
         }
     }
 }
-
 
 @Composable
 fun PopularBikesSection(title: String, bikes: List<Bike>, onBikeSelected: (Bike) -> Unit) {
@@ -256,15 +246,12 @@ fun PopularBikesSection(title: String, bikes: List<Bike>, onBikeSelected: (Bike)
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = title, // Gunakan judul dari parameter
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-
-
         }
         Spacer(modifier = Modifier.height(4.dp))
-        // Tampilkan daftar motor dari parameter
         LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             items(bikes) { bike ->
                 BikeCard(bike = bike, onBikeSelected = onBikeSelected)
@@ -280,7 +267,6 @@ fun BikeCard(bike: Bike, onBikeSelected: (Bike) -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .width(250.dp)
-            // Hanya bisa diklik jika statusnya AVAILABLE
             .clickable(enabled = bike.status == BikeStatus.AVAILABLE) {
                 onBikeSelected(bike)
             }
@@ -353,16 +339,15 @@ fun BikeCard(bike: Bike, onBikeSelected: (Bike) -> Unit) {
 val sampleBikesForPreview = listOf(
     Bike(1, "Honda Vario 160", "160cc · Auto", "85k", 4.9, R.drawable.honda_vario, BikeStatus.UNAVAILABLE, BikeType.MATIC),
     Bike(2, "Yamaha NMAX", "155cc · Auto", "120k", 4.8, R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC),
-    Bike(3, "Honda Scoopy", "110cc · Auto", "75k", 4.9, R.drawable.honda_scoopy, BikeStatus.AVAILABLE, BikeType.MATIC),
 )
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 1200)
 @Composable
 fun HomeScreenPreview() {
     ScootEaseTheme {
-        // Beri nilai default untuk onNavigateToProfile di preview
         HomeScreen(
             allBikes = sampleBikesForPreview,
+            bikeCount = sampleBikesForPreview.size,
             onNavigateToProfile = {},
             onBikeSelected = { _, _, _ -> }
         )

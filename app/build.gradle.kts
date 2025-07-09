@@ -94,7 +94,7 @@ dependencies {
     // Show dynamic Imgae
     implementation("io.coil-kt:coil-compose:2.4.0")
 
-
+    implementation("com.google.maps.android:maps-compose:4.3.3")
 
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.compose.runtime:runtime-livedata:1.8.2")

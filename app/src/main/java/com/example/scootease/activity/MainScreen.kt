@@ -30,16 +30,17 @@ fun MainScreen(
     username: String,
     email: String,
     allBikes: List<Bike>,
-    // --- PERUBAHAN: Terima dua daftar terpisah ---
+    bikeCount: Int,
     ongoingBookings: List<Booking>,
     historyBookings: List<Booking>,
+    onBookingSelected: (Booking) -> Unit,
     onDeleteBooking: (Booking) -> Unit,
+    onCompleteBooking: (Booking) -> Unit,
     onLogout: () -> Unit,
     onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
     onNavigateTo: (AppScreen) -> Unit,
     activeTab: Int,
-    onTabSelected: (Int) -> Unit,
-    onCompleteBooking: (Booking) -> Unit
+    onTabSelected: (Int) -> Unit
 ) {
     Scaffold(
         bottomBar = {
@@ -66,16 +67,17 @@ fun MainScreen(
             when (activeTab) {
                 0 -> HomeScreen(
                     allBikes = allBikes,
+                    bikeCount = bikeCount,
                     onNavigateToProfile = { onTabSelected(3) },
                     onBikeSelected = { bike, startDate, endDate ->
                         onBikeSelectedForBooking(bike, startDate, endDate)
                     }
                 )
-                1 -> MapScreen(onNavigateBack = { onTabSelected(0) })
+                1 -> MapScreen(allBikes = allBikes, onNavigateBack = { onTabSelected(0) })
                 2 -> BookingsScreen(
-                    // --- PERUBAHAN: Berikan dua daftar terpisah ---
                     ongoingBookings = ongoingBookings,
                     historyBookings = historyBookings,
+                    onBookingSelected = onBookingSelected,
                     onDeleteBooking = onDeleteBooking,
                     onCompleteBooking = onCompleteBooking
                 )

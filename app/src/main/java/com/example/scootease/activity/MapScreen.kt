@@ -1,16 +1,14 @@
 package com.example.scootease.activity
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,27 +18,49 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.scootease.ui.theme.ScootEaseTheme
 import com.example.scootease.R
 import com.example.scootease.models.BikeStatus
 import com.example.scootease.models.BikeType
+import com.example.scootease.ui.theme.ScootEaseTheme
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
-// Data contoh untuk motor yang "dipilih" di peta.
-val selectedBikeForMap = Bike(
-    id = 2,
-    name = "Yamaha NMAX",
-    specs = "155cc · Otomatis · Bagasi Luas",
-    price = "120k",
-    rating = 4.8,
-    imageRes = R.drawable.yamaha_nmax, BikeStatus.AVAILABLE, BikeType.MATIC // Pastikan Anda memiliki gambar ini di res/drawable
-)
-
+// --- PERUBAHAN: Tambahkan parameter allBikes ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// 1. Tambahkan parameter onNavigateBack di sini
-fun MapScreen(onNavigateBack: () -> Unit) {
+fun MapScreen(
+    allBikes: List<Bike>,
+    onNavigateBack: () -> Unit
+) {
+    // --- State untuk melacak motor yang dipilih di peta ---
+    var selectedBike by remember { mutableStateOf<Bike?>(null) }
+
+    // --- Data Lokasi Contoh untuk Motor ---
+    // Di aplikasi nyata, ini akan datang dari database Anda.
+    val bikeLocations = remember {
+        mapOf(
+            1 to LatLng(-8.4594, 115.2683), // Vario di Ubud
+            2 to LatLng(-8.6573, 115.2224), // NMAX di Denpasar
+            3 to LatLng(-8.8149, 115.1697), // Scoopy di Kuta
+            4 to LatLng(-8.7222, 115.1768), // PCX di Seminyak
+            5 to LatLng(-8.4095, 115.2933), // Harley 48 di Tegalalang
+            6 to LatLng(-8.3405, 115.0919), // BMW GS di Bedugul
+            7 to LatLng(-8.7909, 115.2011)  // Harley RG di Nusa Dua
+        )
+    }
+
+    // --- Pengaturan awal kamera peta, fokus di Bali ---
+    val baliCenter = LatLng(-8.65, 115.2166)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(baliCenter, 10f)
+    }
+
     Scaffold(
-        // 2. Teruskan parameter onNavigateBack ke MapTopBar
         topBar = { MapTopBar(onNavigateBack = onNavigateBack) }
     ) { paddingValues ->
         Box(
@@ -48,11 +68,42 @@ fun MapScreen(onNavigateBack: () -> Unit) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            MapPlaceholder()
-            Column(
-                modifier = Modifier.align(Alignment.BottomCenter)
+            // --- PERBAIKAN: Gunakan GoogleMap ---
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                onMapClick = {
+                    // Sembunyikan bottom sheet jika klik area kosong di peta
+                    selectedBike = null
+                }
             ) {
-                BikeInfoBottomSheet(bike = selectedBikeForMap)
+                // --- Tampilkan semua motor sebagai Marker ---
+                allBikes.forEach { bike ->
+                    bikeLocations[bike.id]?.let { location ->
+                        Marker(
+                            state = MarkerState(position = location),
+                            title = bike.name,
+                            snippet = "Klik untuk detail",
+                            // Ganti ikon berdasarkan status
+                            icon = BitmapDescriptorFactory.defaultMarker(
+                                if (bike.status == BikeStatus.AVAILABLE) BitmapDescriptorFactory.HUE_GREEN else BitmapDescriptorFactory.HUE_RED
+                            ),
+                            onClick = {
+                                selectedBike = bike
+                                // Mengembalikan false agar event klik default (seperti judul muncul) tetap berjalan
+                                false
+                            }
+                        )
+                    }
+                }
+            }
+            // --- Tampilkan Bottom Sheet jika ada motor yang dipilih ---
+            if (selectedBike != null) {
+                Column(
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    BikeInfoBottomSheet(bike = selectedBike!!)
+                }
             }
         }
     }
@@ -60,14 +111,10 @@ fun MapScreen(onNavigateBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// 3. Tambahkan parameter onNavigateBack di sini juga
 fun MapTopBar(onNavigateBack: () -> Unit) {
     TopAppBar(
-        title = {
-            Text("Cari di Sekitarmu", fontWeight = FontWeight.Bold)
-        },
+        title = { Text("Cari di Sekitarmu", fontWeight = FontWeight.Bold) },
         navigationIcon = {
-            // 4. Gunakan parameter onNavigateBack pada saat tombol diklik
             IconButton(onClick = onNavigateBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
             }
@@ -80,16 +127,6 @@ fun MapTopBar(onNavigateBack: () -> Unit) {
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
         )
-    )
-}
-
-@Composable
-fun MapPlaceholder() {
-    Image(
-        painter = painterResource(id = R.drawable.ic_launcher_background), // GANTI DENGAN GAMBAR PETA
-        contentDescription = "Peta Lokasi Motor",
-        modifier = Modifier.fillMaxSize(),
-        contentScale = ContentScale.Crop
     )
 }
 
@@ -109,9 +146,7 @@ fun BikeInfoBottomSheet(bike: Bike) {
             Image(
                 painter = painterResource(id = bike.imageRes),
                 contentDescription = bike.name,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(16.dp)),
+                modifier = Modifier.size(100.dp).clip(RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -122,11 +157,7 @@ fun BikeInfoBottomSheet(bike: Bike) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Star, "Rating", tint = Color(0xFFFFC700), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(
-                        "${bike.rating}  ·  IDR ${bike.price}/hari",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text(" ${bike.rating}  ·  IDR ${bike.price}/hari", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
             Button(
@@ -144,7 +175,6 @@ fun BikeInfoBottomSheet(bike: Bike) {
 @Composable
 fun MapScreenPreview() {
     ScootEaseTheme {
-        // 5. Beri nilai default untuk onNavigateBack di preview agar tidak error
-        MapScreen(onNavigateBack = {})
+        MapScreen(allBikes = emptyList(), onNavigateBack = {})
     }
 }

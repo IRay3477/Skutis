@@ -12,6 +12,8 @@ import com.example.scootease.models.BikeType
 import com.example.scootease.models.Booking
 import com.example.scootease.models.BookingStatus
 import com.example.scootease.models.User
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", null, 2) {
 
@@ -183,9 +185,22 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         }
     }
 
-    fun getAllBikes(): List<Bike> {
+    suspend fun getAllBikes(): List<Bike> = withContext(Dispatchers.IO) {
+        val db = writableDatabase // Gunakan writable agar bisa insert jika perlu
+
+        // Langkah 1: Cek apakah tabel bikes kosong
+        val countCursor = db.rawQuery("SELECT count(*) FROM $TABLE_BIKES", null)
+        countCursor.moveToFirst()
+        val count = countCursor.getInt(0)
+        countCursor.close()
+
+        // Langkah 2: Jika kosong, panggil fungsi untuk mengisi data
+        if (count == 0) {
+            insertInitialBikes(db)
+        }
+
+        // Langkah 3: Sekarang, lanjutkan mengambil data seperti biasa
         val bikeList = mutableListOf<Bike>()
-        val db = readableDatabase
         val cursor = db.rawQuery("SELECT * FROM $TABLE_BIKES", null)
         if (cursor.moveToFirst()) {
             do {
@@ -205,31 +220,29 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         }
         cursor.close()
         db.close()
-        return bikeList
+        return@withContext bikeList
     }
 
-    private fun getBikeById(bikeId: Int): Bike? {
-        val db = readableDatabase
-        val cursor = db.rawQuery("SELECT * FROM $TABLE_BIKES WHERE id = ?", arrayOf(bikeId.toString()))
-        var bike: Bike? = null
-        if (cursor.moveToFirst()) {
-            bike = Bike(
-                id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
-                name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
-                specs = cursor.getString(cursor.getColumnIndexOrThrow("specs")),
-                price = cursor.getString(cursor.getColumnIndexOrThrow("price")),
-                rating = cursor.getDouble(cursor.getColumnIndexOrThrow("rating")),
-                imageRes = cursor.getInt(cursor.getColumnIndexOrThrow("imageRes")),
-                status = BikeStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status"))),
-                type = BikeType.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("type")))
-            )
+    private fun getBikeById(db: SQLiteDatabase, bikeId: Int): Bike? {
+        // Gunakan cursor yang aman dengan 'use' yang akan menutupnya secara otomatis
+        db.rawQuery("SELECT * FROM $TABLE_BIKES WHERE id = ?", arrayOf(bikeId.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                return Bike(
+                    id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                    name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
+                    specs = cursor.getString(cursor.getColumnIndexOrThrow("specs")),
+                    price = cursor.getString(cursor.getColumnIndexOrThrow("price")),
+                    rating = cursor.getDouble(cursor.getColumnIndexOrThrow("rating")),
+                    imageRes = cursor.getInt(cursor.getColumnIndexOrThrow("imageRes")),
+                    status = BikeStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status"))),
+                    type = BikeType.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("type")))
+                )
+            }
         }
-        cursor.close()
-        // Jangan tutup DB di sini agar bisa dipakai di getAllBookings
-        return bike
+        return null
     }
 
-    fun insertBooking(booking: Booking): Boolean {
+  suspend  fun insertBooking(booking: Booking): Boolean {
         val db = writableDatabase
         val cv = ContentValues().apply {
             put("id", booking.id)
@@ -244,14 +257,14 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         return result != -1L
     }
 
-    fun deleteBooking(bookingId: String): Boolean {
+  suspend  fun deleteBooking(bookingId: String): Boolean {
         val db = writableDatabase
         val result = db.delete(TABLE_BOOKINGS, "id=?", arrayOf(bookingId))
         db.close()
         return result > 0
     }
 
-    fun updateBookingStatus(bookingId: String, newStatus: BookingStatus): Boolean {
+  suspend  fun updateBookingStatus(bookingId: String, newStatus: BookingStatus): Boolean {
         val db = writableDatabase
         val cv = ContentValues().apply {
             put("status", newStatus.name)
@@ -261,30 +274,31 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, "scooteaseDB.db", n
         return result > 0
     }
 
-    fun getAllBookings(): List<Booking> {
+    suspend fun getAllBookings(): List<Booking> = withContext(Dispatchers.IO) {
         val bookingList = mutableListOf<Booking>()
         val db = readableDatabase
-        val cursor = db.rawQuery("SELECT * FROM $TABLE_BOOKINGS", null)
-        if (cursor.moveToFirst()) {
-            do {
-                val bikeId = cursor.getInt(cursor.getColumnIndexOrThrow("bike_id"))
-                // Ambil data motor terkait booking ini
-                getBikeById(bikeId)?.let { bike ->
-                    bookingList.add(
-                        Booking(
-                            id = cursor.getString(cursor.getColumnIndexOrThrow("id")),
-                            bike = bike,
-                            startDate = cursor.getString(cursor.getColumnIndexOrThrow("start_date")),
-                            endDate = cursor.getString(cursor.getColumnIndexOrThrow("end_date")),
-                            totalPrice = cursor.getString(cursor.getColumnIndexOrThrow("total_price")),
-                            status = BookingStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status")))
+        // Gunakan 'use' untuk memastikan cursor selalu ditutup
+        db.rawQuery("SELECT * FROM $TABLE_BOOKINGS", null).use { cursor ->
+            if (cursor.moveToFirst()) {
+                do {
+                    val bikeId = cursor.getInt(cursor.getColumnIndexOrThrow("bike_id"))
+                    // Teruskan instance DB yang sudah ada ke getBikeById
+                    getBikeById(db, bikeId)?.let { bike ->
+                        bookingList.add(
+                            Booking(
+                                id = cursor.getString(cursor.getColumnIndexOrThrow("id")),
+                                bike = bike,
+                                startDate = cursor.getString(cursor.getColumnIndexOrThrow("start_date")),
+                                endDate = cursor.getString(cursor.getColumnIndexOrThrow("end_date")),
+                                totalPrice = cursor.getString(cursor.getColumnIndexOrThrow("total_price")),
+                                status = BookingStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("status")))
+                            )
                         )
-                    )
-                }
-            } while (cursor.moveToNext())
+                    }
+                } while (cursor.moveToNext())
+            }
         }
-        cursor.close()
-        db.close()
-        return bookingList
+        db.close() // Tutup koneksi setelah semua selesai
+        return@withContext bookingList
     }
 }
