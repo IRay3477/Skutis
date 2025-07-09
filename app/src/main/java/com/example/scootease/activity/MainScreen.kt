@@ -24,7 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
 @Composable
-fun MainScreen(onLogout: () -> Unit) {
+fun MainScreen(username: String, email: String, onLogout: () -> Unit) {
     var selectedItem by remember { mutableIntStateOf(0) }
 
     Scaffold(
@@ -39,10 +39,7 @@ fun MainScreen(onLogout: () -> Unit) {
                         label = { Text(item) },
                         selected = selectedItem == index,
                         onClick = { selectedItem = index },
-                        icon = {
-                            val icon = if (selectedItem == index) filledIcons[index] else icons[index]
-                            Icon(icon, contentDescription = item)
-                        }
+                        icon = { val icon = if (selectedItem == index) filledIcons[index] else icons[index]; Icon(icon, contentDescription = item) }
                     )
                 }
             }
@@ -53,7 +50,8 @@ fun MainScreen(onLogout: () -> Unit) {
                 0 -> HomeScreen(onNavigateToProfile = { selectedItem = 3 })
                 1 -> MapScreen(onNavigateBack = { selectedItem = 0 })
                 2 -> CenterText(text = "Halaman Booking")
-                3 -> ProfileScreen(onLogoutClick = onLogout)
+                // Teruskan data ke ProfileScreen
+                3 -> ProfileScreen(username = username, email = email, onLogoutClick = onLogout)
             }
         }
     }

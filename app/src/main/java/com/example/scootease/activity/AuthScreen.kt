@@ -32,23 +32,7 @@ import com.example.scootease.helpers.DBHelper
 import com.example.scootease.models.User
 import com.example.scootease.services.SessionManager
 
-/**
- * PENTING:
- * Untuk menggunakan sistem navigasi ini, buka file MainActivity.kt Anda
- * dan ubah isinya untuk memanggil `ScootEaseApp()` seperti di bawah ini:
- *
- * class MainActivity : ComponentActivity() {
- * override fun onCreate(savedInstanceState: Bundle?) {
- * super.onCreate(savedInstanceState)
- * setContent {
- * ScootEaseTheme {
- * // Panggil ScootEaseApp, bukan AuthScreen atau HomeScreen secara langsung
- * ScootEaseApp()
- * }
- * }
- * }
- * }
- */
+
 
 
 @Composable
@@ -65,7 +49,7 @@ private enum class AuthPage {
 }
 
 @Composable
-fun AuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
+fun AuthScreen(onAuthSuccess: (user: User) -> Unit) {
     var currentPage by remember { mutableStateOf(AuthPage.LOGIN) }
     if (currentPage == AuthPage.LOGIN) {
         LoginScreen(
@@ -84,7 +68,8 @@ fun AuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
 @Composable
 fun LoginScreen(
     onSwitchToRegister: () -> Unit,
-    onLoginSuccess: (email: String, role: String) -> Unit
+    // PERBAIKAN: Tipe data disesuaikan menjadi (User) -> Unit
+    onLoginSuccess: (user: User) -> Unit
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -100,6 +85,7 @@ fun LoginScreen(
     ) {
         Image(painter = painterResource(id = R.drawable.ic_launcher_foreground), contentDescription = "Logo Aplikasi", modifier = Modifier.size(120.dp).padding(bottom = 16.dp))
         Text(text = "Selamat Datang Kembali", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(text = "Login untuk melanjutkan petualanganmu!", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 32.dp))
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Email, "Email Icon") })
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Lock, "Password Icon") }, visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = {
@@ -114,7 +100,8 @@ fun LoginScreen(
                     val user = dbHelper.login(email, password)
                     if (user != null) {
                         Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
-                        onLoginSuccess(user.email, user.role)
+                        // PERBAIKAN: Kirim seluruh objek User saat login sukses
+                        onLoginSuccess(user)
                     } else {
                         Toast.makeText(context, "Email atau password salah.", Toast.LENGTH_SHORT).show()
                     }
@@ -137,7 +124,8 @@ fun LoginScreen(
 @Composable
 fun RegisterScreen(
     onSwitchToLogin: () -> Unit,
-    onRegisterSuccess: (email: String, role: String) -> Unit
+    // PERBAIKAN: Tipe data disesuaikan menjadi (User) -> Unit
+    onRegisterSuccess: (user: User) -> Unit
 ) {
     var fullName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -153,6 +141,7 @@ fun RegisterScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = "Buat Akun Baru", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(text = "Satu langkah lagi untuk mulai menjelajah.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 32.dp))
         OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Nama Lengkap") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Person, "Nama Icon") })
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Email, "Email Icon") })
@@ -181,7 +170,8 @@ fun RegisterScreen(
                 val success = dbHelper.registerUser(user)
                 if (success) {
                     Toast.makeText(context, "Registrasi berhasil!", Toast.LENGTH_LONG).show()
-                    onRegisterSuccess(user.email, user.role)
+                    // PERBAIKAN: Kirim seluruh objek User yang baru dibuat
+                    onRegisterSuccess(user)
                 } else {
                     Toast.makeText(context, "Registrasi gagal, coba lagi.", Toast.LENGTH_SHORT).show()
                 }
@@ -201,7 +191,7 @@ fun RegisterScreen(
 @Composable
 fun LoginScreenPreview() {
     ScootEaseTheme {
-        LoginScreen(onSwitchToRegister = {}, onLoginSuccess = { _, _ -> })
+        LoginScreen(onSwitchToRegister = {}, onLoginSuccess = {})
     }
 }
 
@@ -209,6 +199,6 @@ fun LoginScreenPreview() {
 @Composable
 fun RegisterScreenPreview() {
     ScootEaseTheme {
-        RegisterScreen(onSwitchToLogin = {}, onRegisterSuccess = { _, _ -> })
+        RegisterScreen(onSwitchToLogin = {}, onRegisterSuccess = {})
     }
 }

@@ -9,11 +9,19 @@ class SessionManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("scootease_prefs", Context.MODE_PRIVATE)
 
-    fun saveLogin(email: String, role: String) {
+    companion object {
+        const val KEY_IS_LOGGED_IN = "is_logged_in"
+        const val KEY_EMAIL = "email"
+        const val KEY_ROLE = "role"
+        const val KEY_USERNAME = "username"
+    }
+
+    fun saveLogin(email: String, role: String, username: String) {
         prefs.edit {
-            putBoolean("is_logged_in", true)
-                .putString("email", email)
-                .putString("role", role)
+            putBoolean(KEY_IS_LOGGED_IN, true)
+                .putString(KEY_EMAIL, email)
+                .putString(KEY_ROLE, role)
+                .putString(KEY_USERNAME, username)
         }
     }
 
@@ -31,5 +39,9 @@ class SessionManager(context: Context) {
 
     fun getUserRole(): String? {
         return prefs.getString("role", null)
+    }
+
+    fun getUserName(): String? {
+        return prefs.getString("username", null)
     }
 }

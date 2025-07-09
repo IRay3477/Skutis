@@ -27,30 +27,30 @@ import com.example.scootease.ui.theme.ScootEaseTheme
 import com.example.scootease.R
 
 @Composable
-fun ProfileScreen(onLogoutClick: () -> Unit) {
+fun ProfileScreen(
+    username: String,
+    email: String,
+    onLogoutClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
-        // Bagian Header Profil
-        ProfileHeaderSection()
+        // Teruskan data ke header
+        ProfileHeaderSection(username = username, email = email)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Bagian Menu
         MenuSection(title = "Akun", items = accountMenuItems)
         Spacer(modifier = Modifier.height(16.dp))
         MenuSection(title = "Lainnya", items = otherMenuItems)
 
-        Spacer(modifier = Modifier.weight(1f)) // Mendorong tombol logout ke bawah
+        Spacer(modifier = Modifier.weight(1f))
 
-        // Tombol Logout
         Button(
             onClick = onLogoutClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -64,7 +64,7 @@ fun ProfileScreen(onLogoutClick: () -> Unit) {
 }
 
 @Composable
-fun ProfileHeaderSection() {
+fun ProfileHeaderSection(username: String, email: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -155,6 +155,9 @@ val otherMenuItems = listOf(
 @Composable
 fun ProfileScreenPreview() {
     ScootEaseTheme {
-        ProfileScreen(onLogoutClick = {})
+        ProfileScreen(
+            username = "Contoh Pengguna",
+            email = "contoh@email.com",
+            onLogoutClick = {})
     }
 }

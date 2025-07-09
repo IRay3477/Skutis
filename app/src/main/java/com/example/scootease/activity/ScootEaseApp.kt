@@ -23,13 +23,21 @@ fun ScootEaseApp() {
 
     Surface(modifier = Modifier.fillMaxSize()) {
         if (isAuthenticated) {
-            MainScreen(onLogout = {
-                sessionManager.clearSession()
-                isAuthenticated = false
-            })
+            val username = sessionManager.getUserName() ?: "Pengguna"
+            val email = sessionManager.getUserEmail() ?: "Email"
+
+            MainScreen(
+                username = username,
+                email = email,
+                onLogout = {
+                    sessionManager.clearSession()
+                    isAuthenticated = false
+                }
+            )
         } else {
-            AuthScreen(onAuthSuccess = { email, role ->
-                sessionManager.saveLogin(email, role)
+            AuthScreen(onAuthSuccess = { user ->
+                // Simpan semua data user ke sesi
+                sessionManager.saveLogin(user.email, user.role, user.username)
                 isAuthenticated = true
             })
         }
