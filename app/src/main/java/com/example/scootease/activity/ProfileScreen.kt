@@ -80,17 +80,21 @@ fun ProfileHeaderSection(username: String, email: String) {
                 .clip(CircleShape)
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+        // ================== PERBAIKAN DI SINI ==================
+        // Gunakan parameter 'username' dan 'email' yang diterima fungsi,
+        // bukan teks statis.
         Text(
-            // Di aplikasi nyata, nama ini akan dinamis
-            text = "Bagus Jagra Wicaksana",
+            text = username, // <-- DIUBAH
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "bagus.jagra@example.com",
+            text = email, // <-- DIUBAH
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        // =======================================================
     }
 }
 
@@ -139,11 +143,9 @@ fun MenuItem(icon: ImageVector, title: String, onClick: () -> Unit) {
     }
 }
 
-// Data untuk menu
 data class MenuItemData(val icon: ImageVector, val title: String, val onClick: () -> Unit = {})
 val accountMenuItems = listOf(
     MenuItemData(Icons.Default.VerifiedUser, "Verifikasi Dokumen"),
-    // Tambahkan item lain di sini
 )
 val otherMenuItems = listOf(
     MenuItemData(Icons.AutoMirrored.Filled.HelpOutline, "Pusat Bantuan"),
