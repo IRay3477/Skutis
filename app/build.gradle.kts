@@ -103,4 +103,6 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout-compose:1.1.1")
     implementation("androidx.compose.foundation:foundation:1.8.2")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
+
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

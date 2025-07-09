@@ -185,7 +185,7 @@ fun BookingSummaryItem(startDate: String, endDate: String, durationInDays: Long)
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text("Total Book Duration", style = MaterialTheme.typography.labelMedium)
-                    Text("$durationInDays Hari", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    Text("$durationInDays Days", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

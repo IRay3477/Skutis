@@ -1,5 +1,8 @@
 package com.example.scootease.activity
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,18 +14,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.scootease.ui.theme.ScootEaseTheme
 import com.example.scootease.R
 
@@ -30,27 +41,37 @@ import com.example.scootease.R
 fun ProfileScreen(
     username: String,
     email: String,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    onNavigateToDocVerification: () -> Unit,
+    onNavigateToHelp: () -> Unit,
+    onNavigateToAbout: () -> Unit
 ) {
+    // Data untuk menu sekarang didefinisikan di dalam Composable
+    val accountMenuItems = listOf(
+        MenuItemData(Icons.Default.VerifiedUser, "Document Verification", onNavigateToDocVerification),
+    )
+    val otherMenuItems = listOf(
+        MenuItemData(Icons.AutoMirrored.Filled.HelpOutline, "Help", onNavigateToHelp),
+        MenuItemData(Icons.Default.Info, "About Us", onNavigateToAbout),
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
-        // Teruskan data ke header
         ProfileHeaderSection(username = username, email = email)
         Spacer(modifier = Modifier.height(16.dp))
-
-        MenuSection(title = "Akun", items = accountMenuItems)
+        MenuSection(title = "Account", items = accountMenuItems)
         Spacer(modifier = Modifier.height(16.dp))
-        MenuSection(title = "Lainnya", items = otherMenuItems)
-
+        MenuSection(title = "Others", items = otherMenuItems)
         Spacer(modifier = Modifier.weight(1f))
-
         Button(
             onClick = onLogoutClick,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -58,13 +79,20 @@ fun ProfileScreen(
         ) {
             Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
             Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-            Text("Keluar (Logout)", fontWeight = FontWeight.Bold)
+            Text("Logout", fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 fun ProfileHeaderSection(username: String, email: String) {
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imageUri = uri
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -72,29 +100,30 @@ fun ProfileHeaderSection(username: String, email: String) {
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_launcher_foreground), // Ganti dengan avatar pengguna
-            contentDescription = "User Avatar",
-            modifier = Modifier
-                .size(90.dp)
-                .clip(CircleShape)
-        )
+        Box {
+            // Gunakan AsyncImage dari Coil untuk menampilkan gambar dari URI
+            AsyncImage(
+                model = imageUri ?: R.drawable.ic_launcher_foreground,
+                contentDescription = "User Avatar",
+                modifier = Modifier
+                    .size(90.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+            IconButton(
+                onClick = { launcher.launch("image/*") },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .size(30.dp)
+            ) {
+                Icon(Icons.Default.CameraAlt, contentDescription = "Change Profile Picture", tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
-
-        // ================== PERBAIKAN DI SINI ==================
-        // Gunakan parameter 'username' dan 'email' yang diterima fungsi,
-        // bukan teks statis.
-        Text(
-            text = username, // <-- DIUBAH
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = email, // <-- DIUBAH
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        // =======================================================
+        Text(text = username, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(text = email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -145,11 +174,11 @@ fun MenuItem(icon: ImageVector, title: String, onClick: () -> Unit) {
 
 data class MenuItemData(val icon: ImageVector, val title: String, val onClick: () -> Unit = {})
 val accountMenuItems = listOf(
-    MenuItemData(Icons.Default.VerifiedUser, "Verifikasi Dokumen"),
+    MenuItemData(Icons.Default.VerifiedUser, "Document Verification"),
 )
 val otherMenuItems = listOf(
-    MenuItemData(Icons.AutoMirrored.Filled.HelpOutline, "Pusat Bantuan"),
-    MenuItemData(Icons.Default.Info, "Tentang Kami"),
+    MenuItemData(Icons.AutoMirrored.Filled.HelpOutline, "Help"),
+    MenuItemData(Icons.Default.Info, "About Us"),
 )
 
 
@@ -158,8 +187,12 @@ val otherMenuItems = listOf(
 fun ProfileScreenPreview() {
     ScootEaseTheme {
         ProfileScreen(
-            username = "Contoh Pengguna",
-            email = "contoh@email.com",
-            onLogoutClick = {})
+            username = "User Example",
+            email = "example@email.com",
+            onLogoutClick = {},
+            onNavigateToDocVerification = {},
+            onNavigateToHelp = {},
+            onNavigateToAbout = {}
+        )
     }
 }

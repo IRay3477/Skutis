@@ -19,6 +19,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.example.scootease.models.Booking
+import com.example.scootease.models.BookingStatus
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun MainScreen(
@@ -26,41 +31,71 @@ fun MainScreen(
     email: String,
     allBikes: List<Bike>,
     onLogout: () -> Unit,
+    onNavigateTo: (AppScreen) -> Unit,
     onBikeSelectedForBooking: (bike: Bike, startDate: Long, endDate: Long) -> Unit,
     activeTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                val items = listOf("Home", "Map", "Bookings", "Profile")
-                val outlinedIcons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
-                val filledIcons = listOf(Icons.Filled.Home, Icons.Filled.Map, Icons.Filled.Article, Icons.Filled.Person)
+    var activeTab by remember { mutableIntStateOf(0) }
+    var bookingRequest by remember { mutableStateOf<BookingRequest?>(null) }
+    var bookings by remember { mutableStateOf(sampleBookings) }
 
-                items.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        label = { Text(item) },
-                        selected = activeTab == index,
-                        onClick = { onTabSelected(index) },
-                        icon = {
-                            val icon = if (activeTab == index) filledIcons[index] else outlinedIcons[index]
-                            Icon(icon, contentDescription = item)
-                        }
-                    )
+    if (bookingRequest != null) {
+        BookingDetailScreen(
+            bike = bookingRequest!!.bike,
+            startDateMillis = bookingRequest!!.startDate,
+            endDateMillis = bookingRequest!!.endDate,
+            onNavigateBack = { bookingRequest = null },
+            onConfirmBooking = {
+                val newBooking = Booking("SC-00${bookings.size + 1}", bookingRequest!!.bike, SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(
+                    Date(bookingRequest!!.startDate)
+                ), SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(bookingRequest!!.endDate)), "IDR ...", BookingStatus.ONGOING)
+                bookings = bookings + newBooking
+                bookingRequest = null
+                activeTab = 2
+                // Toast.makeText(context, "Motorbike successfully booked!", Toast.LENGTH_SHORT).show()
+            }
+        )
+    } else {
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    val items = listOf("Home", "Map", "Bookings", "Profile")
+                    val icons = listOf(Icons.Outlined.Home, Icons.Outlined.Map, Icons.Outlined.Article, Icons.Outlined.Person)
+                    val filledIcons = listOf(Icons.Filled.Home, Icons.Filled.Map, Icons.Filled.Article, Icons.Filled.Person)
+
+                    items.forEachIndexed { index, item ->
+                        NavigationBarItem(
+                            label = { Text(item) },
+                            selected = activeTab == index,
+                            onClick = { activeTab = index },
+                            icon = {
+                                val icon = if (activeTab == index) filledIcons[index] else icons[index]
+                                Icon(icon, contentDescription = item)
+                            }
+                        )
+                    }
                 }
             }
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            when (activeTab) {
-                0 -> HomeScreen(
-                    allBikes = allBikes,
-                    onNavigateToProfile = { onTabSelected(3) },
-                    onBikeSelected = onBikeSelectedForBooking
-                )
-                1 -> MapScreen(onNavigateBack = { onTabSelected(0) })
-                2 -> BookingsScreen()
-                3 -> ProfileScreen(username = username, email = email, onLogoutClick = onLogout)
+        ) { paddingValues ->
+            Box(modifier = Modifier.padding(paddingValues)) {
+                when (activeTab) {
+                    0 -> HomeScreen(
+                        allBikes = allBikes,
+                        onNavigateToProfile = { onNavigateTo(AppScreen.MAIN); activeTab = 3 },
+                        onBikeSelected = { bike, startDate, endDate ->
+                            bookingRequest = BookingRequest(bike, startDate, endDate)
+                        }
+                    )
+                    1 -> MapScreen(onNavigateBack = { activeTab = 0 })
+                    2 -> BookingsScreen()
+                    3 -> ProfileScreen(
+                        username = username, email = email, onLogoutClick = onLogout,
+                        onNavigateToDocVerification = { onNavigateTo(AppScreen.DOC_VERIFICATION) },
+                        onNavigateToHelp = { onNavigateTo(AppScreen.HELP) },
+                        onNavigateToAbout = { onNavigateTo(AppScreen.ABOUT_US) }
+                    )
+                }
             }
         }
     }
